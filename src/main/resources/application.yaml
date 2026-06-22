@@ -1,3 +1,27 @@
 spring:
   application:
     name: my-market-app-skeleton
+
+  datasource:
+    driver-class-name: org.postgresql.Driver
+    url: r2dbc:postgresql://localhost:5432/market-app
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+
+  liquibase:
+    change-log: classpath:db/changelog/db.changelog-master.yaml
+
+  logging:
+    level:
+      root: INFO
+      org.springframework: INFO
+      org.hibernate.SQL: DEBUG
+      org.hibernate.orm.jdbc.bind: TRACE
+      com.yourpackage: DEBUG
+
+    pattern:
+      console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+  server:
+    port: 8080
+

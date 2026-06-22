@@ -1,0 +1,28 @@
+services:
+  postgres:
+    image: postgres:15
+    container_name: market-app
+    environment:
+      POSTGRES_DB: market-app
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: 123
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - my-market-app
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U user -d market-app" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+
+
+volumes:
+  postgres_data:
+
+networks:
+  my-market-app:
+    driver: bridge
