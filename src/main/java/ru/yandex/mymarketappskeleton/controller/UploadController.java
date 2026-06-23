@@ -19,14 +19,14 @@ public class UploadController {
     private final ItemRepository itemRepository;
     private final ImageStorageService imageStorageService;
 
-    @Transactional
     @PostMapping("/{id}/upload-image")
     public Mono<String> uploadImage(@PathVariable Long id,
                                     @RequestPart("file") FilePart file) {
 
         return itemRepository.findById(id)
-                .switchIfEmpty(Mono.defer(() -> Mono.error(new ItemNotFoundException("Item not found: " + id))))
-                .flatMap(item -> imageStorageService.save(file)
+                .switchIfEmpty(Mono.error(new ItemNotFoundException("Item not found: " + id)))
+                .flatMap(item ->
+                        imageStorageService.save(file)
                                 .map(path -> {
                                     item.setImgPath(path);
                                     return item;

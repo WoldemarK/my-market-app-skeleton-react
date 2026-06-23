@@ -12,6 +12,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import ru.yandex.mymarketappskeleton.dto.CartUpdateRequest;
 import ru.yandex.mymarketappskeleton.dto.ItemDto;
+import ru.yandex.mymarketappskeleton.dto.Paging;
 import ru.yandex.mymarketappskeleton.enums.ActionTypes;
 import ru.yandex.mymarketappskeleton.enums.SortType;
 import ru.yandex.mymarketappskeleton.service.CartService;
@@ -27,15 +28,16 @@ public class ItemsController {
 
 
     @GetMapping({"/", "/items"})
-    public Mono<String> getItems(@RequestParam(name = "search", required = false) String search,
-                                 @RequestParam(name = "sort", defaultValue = "NO") SortType sort,
-                                 @RequestParam(name = "pageNumber", defaultValue = "1") int pageNumber,
-                                 @RequestParam(name = "pageSize", defaultValue = "5") int pageSize,
-                                 WebSession session,
-                                 Model model) {
+    public Mono<String> getItems(
+            @RequestParam(required = false) String search,
+            @RequestParam(defaultValue = "NO") SortType sort,
+            @RequestParam(defaultValue = "1") int pageNumber,
+            @RequestParam(defaultValue = "5") int pageSize,
+            WebSession session,
+            Model model) {
 
         String sessionId = session.getId();
-        System.out.println("GET SESSION = " + session.getId());
+
         return itemService.findItems(search, sort, pageNumber, pageSize)
                 .flatMap(page ->
                         Flux.fromIterable(page.content())
@@ -50,10 +52,20 @@ public class ItemsController {
                                 .flatMap(items ->
                                         itemService.groupItems(Flux.fromIterable(items))
                                                 .map(grouped -> {
+
                                                     model.addAttribute("items", grouped);
                                                     model.addAttribute("search", search);
                                                     model.addAttribute("sort", sort);
-                                                    model.addAttribute("paging", page);
+
+                                                    model.addAttribute("paging",
+                                                            new Paging(
+                                                                    pageNumber,
+                                                                    pageSize,
+                                                                    page.hasNext(),
+                                                                    page.hasPrevious()
+                                                            )
+                                                    );
+
                                                     return "items";
                                                 })
                                 )
@@ -61,40 +73,44 @@ public class ItemsController {
     }
 
     @PostMapping("/items")
-    public Mono<String> updateFromItems(
-            ServerWebExchange exchange,
-            WebSession session) {
+    public Mono<String> updateFromItems(ServerWebExchange exchange,
+                                        WebSession session) {
 
         return exchange.getFormData()
                 .flatMap(form -> {
 
                     Long id = Long.valueOf(form.getFirst("id"));
-                    ActionTypes action =
-                            ActionTypes.valueOf(form.getFirst("action"));
+                    ActionTypes action = ActionTypes.valueOf(form.getFirst("action"));
 
                     Mono<Void> operation = switch (action) {
                         case PLUS -> cartService.plus(session.getId(), id);
                         case MINUS -> cartService.minus(session.getId(), id);
                     };
 
-                    return operation.thenReturn("redirect:/items");
+                    String search = form.getFirst("search");
+                    String sort = form.getFirst("sort");
+                    String pageNumber = form.getFirst("pageNumber");
+                    String pageSize = form.getFirst("pageSize");
+
+                    return operation.thenReturn(
+                            "redirect:/items?search=%s&sort=%s&pageNumber=%s&pageSize=%s"
+                                    .formatted(search, sort, pageNumber, pageSize)
+                    );
                 });
     }
 
 
     @GetMapping("/items/{id}")
-    public Mono<String> getItem(@PathVariable("id") Long id, WebSession session, Model model) {
+    public Mono<String> getItem(@PathVariable Long id, WebSession session, Model model) {
+
+        String sessionId = session.getId();
 
         return itemService.findById(id)
-                .zipWith(cartService.getCount(session.getId(), id))
+                .zipWith(cartService.getCount(sessionId, id))
                 .map(tuple -> {
-
                     ItemDto item = tuple.getT1();
                     item.setCount(tuple.getT2());
 
-                    return item;
-                })
-                .map(item -> {
                     model.addAttribute("item", item);
                     return "item";
                 });
@@ -102,13 +118,13 @@ public class ItemsController {
 
 
     @PostMapping("/items/{id}")
-    public Mono<String> updateItem(@PathVariable("id") Long id,
-                                   @RequestParam("action") ActionTypes action,
+    public Mono<String> updateItem(@PathVariable Long id,
+                                   @RequestParam ActionTypes action,
                                    WebSession session) {
+
         Mono<Void> operation = switch (action) {
             case PLUS -> cartService.plus(session.getId(), id);
             case MINUS -> cartService.minus(session.getId(), id);
-
         };
 
         return operation.thenReturn("redirect:/items/" + id);

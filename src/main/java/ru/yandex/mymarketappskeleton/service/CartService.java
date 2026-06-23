@@ -23,12 +23,11 @@ public class CartService {
         return redisTemplate.opsForHash()
                 .increment(key(sessionId), itemId.toString(), 1)
                 .doOnNext(value -> log.info("PLUS itemId={}, sessionId={}, value={}",
-                                itemId,
-                                sessionId,
-                                value
-                        )
-                ).then();
-
+                        itemId,
+                        sessionId,
+                        value
+                ))
+                .then();
     }
 
     public Mono<Void> minus(String sessionId, Long itemId) {
@@ -43,11 +42,17 @@ public class CartService {
                     log.info("MINUS itemId={}, sessionId={}, value={}",
                             itemId,
                             sessionId,
-                            value);
+                            value
+                    );
 
                     if (value <= 0) {
                         return redisTemplate.opsForHash()
                                 .remove(key, field)
+                                .doOnSuccess(v ->
+                                        log.info("DELETE (auto) itemId={}, sessionId={}",
+                                                itemId,
+                                                sessionId
+                                        ))
                                 .then();
                     }
 
@@ -56,22 +61,19 @@ public class CartService {
                 .then();
     }
 
-
     public Mono<Void> delete(String sessionId, Long itemId) {
         return redisTemplate.opsForHash()
-                .remove(key(sessionId),
-                        itemId.toString()
-                )
-                .doOnSuccess(v -> log.info("DELETE itemId={}, sessionId={}",
+                .remove(key(sessionId), itemId.toString())
+                .doOnSuccess(v ->
+                        log.info("DELETE itemId={}, sessionId={}",
                                 itemId,
                                 sessionId
-                        )
-                ).then();
+                        ))
+                .then();
     }
 
     public Mono<Void> clear(String sessionId) {
-        return redisTemplate.opsForHash()
-                .delete(key(sessionId))
+        return redisTemplate.delete(key(sessionId))
                 .doOnSuccess(v -> log.info("CLEAR cart sessionId={}", sessionId))
                 .then();
     }
@@ -82,14 +84,22 @@ public class CartService {
                 .collectMap(
                         entry -> Long.parseLong(entry.getKey().toString()),
                         entry -> Integer.parseInt(entry.getValue().toString())
-                ).doOnNext(cart -> log.debug("GET CART sessionId={}, items={}", sessionId, cart));
+                )
+                .doOnNext(cart -> log.debug("GET CART sessionId={}, items={}",
+                        sessionId,
+                        cart
+                ));
     }
 
     public Mono<Integer> getCount(String sessionId, Long itemId) {
         return redisTemplate.opsForHash()
                 .get(key(sessionId), itemId.toString())
                 .map(value -> Integer.parseInt(value.toString()))
-                .defaultIfEmpty(0);
-
+                .defaultIfEmpty(0)
+                .doOnNext(count -> log.debug("GET COUNT itemId={}, sessionId={}, count={}",
+                        itemId,
+                        sessionId,
+                        count
+                ));
     }
 }

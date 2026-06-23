@@ -31,7 +31,6 @@ public class CartController {
 
         return cartService.getRawCart(sessionId)
                 .flatMap(cart ->
-
                         itemRepository.findAllById(cart.keySet())
                                 .map(item -> ItemDto.builder()
                                         .id(item.getId())
@@ -53,8 +52,7 @@ public class CartController {
                                     model.addAttribute("total", total);
 
                                     return "cart";
-                                })
-                );
+                                }));
     }
 
     @PostMapping("/items")

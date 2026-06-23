@@ -16,6 +16,6 @@ public class BuyController {
     @PostMapping("/buy")
     public Mono<String> buy(WebSession session) {
         return orderService.createOrder(session.getId())
-                .map(orderId -> "redirect:/orders/" + orderId + "?newOrder=true");
+                .map("redirect:/orders/%d?newOrder=true"::formatted);
     }
 }

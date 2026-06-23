@@ -32,15 +32,13 @@ public class OrderService {
     private final CartService cartService;
     private final OrderMapper orderMapper;
 
-    @Transactional
     public Mono<Long> createOrder(String sessionId) {
 
         log.info("Create order started: sessionId={}", sessionId);
 
         return cartService.getRawCart(sessionId)
                 .flatMap(cart -> {
-
-                    log.debug("Cart loaded: {}", cart);
+                    log.debug("Cart loaded: sessionId={}, items={}", sessionId, cart);
 
                     if (cart.isEmpty()) {
                         log.warn("Attempt to create order with empty cart: sessionId={}", sessionId);
@@ -50,9 +48,7 @@ public class OrderService {
                     return itemRepository.findAllById(cart.keySet())
                             .collectList()
                             .flatMap(items -> {
-                                if (items.isEmpty()) {
-                                    return Mono.error(new EmptyCartException());
-                                }
+
                                 log.debug("Items loaded from DB: count={}", items.size());
 
                                 Map<Long, Item> itemMap = items.stream()
@@ -73,31 +69,39 @@ public class OrderService {
 
                                     int count = entry.getValue();
 
-                                    order.getItems().add(getOrderItem(order, item, count));
+                                    OrderItem orderItem = getOrderItem(order, item, count);
+
+                                    order.getItems().add(orderItem);
 
                                     BigDecimal itemSum = item.getPrice().multiply(BigDecimal.valueOf(count));
 
                                     totalSum = totalSum.add(itemSum);
 
-                                    log.debug("Order item added: itemId={}, count={}, sum={}", item.getId(), count, itemSum);
+                                    log.debug("Order item added: itemId={}, count={}, sum={}",
+                                            item.getId(),
+                                            count,
+                                            itemSum
+                                    );
                                 }
 
                                 order.setTotalSum(totalSum);
 
                                 BigDecimal finalTotalSum = totalSum;
+
                                 return orderRepository.save(order)
                                         .flatMap(saved -> {
+
                                             log.info("Order created successfully: orderId={}, totalSum={}",
                                                     saved.getId(),
                                                     finalTotalSum
                                             );
 
                                             return cartService.clear(sessionId)
-                                                    .then(Mono.fromSupplier(() -> {
-                                                        log.info("Cart cleared: sessionId={}",
-                                                                sessionId);
-                                                        return saved.getId();
-                                                    }));
+                                                    .thenReturn(saved.getId())
+                                                    .doOnSuccess(id ->
+                                                            log.info("Cart cleared after order: sessionId={}",
+                                                                    sessionId
+                                                            ));
                                         });
                             });
                 });
@@ -121,9 +125,13 @@ public class OrderService {
 
 
     public Mono<OrderDto> findById(Long id) {
+
         log.debug("Find order by id={}", id);
+
         return orderRepository.findById(id)
-                .switchIfEmpty(Mono.error(new OrderNotFoundException("Order not found: " + id)))
+                .switchIfEmpty(Mono.defer(() -> {log.warn("Order not found: id={}", id);
+                    return Mono.error(new OrderNotFoundException("Order not found: " + id));
+                }))
                 .map(orderMapper::toDto);
     }
 }

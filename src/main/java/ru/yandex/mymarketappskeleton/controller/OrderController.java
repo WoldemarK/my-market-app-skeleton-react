@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import reactor.core.publisher.Mono;
+import ru.yandex.mymarketappskeleton.exception.OrderNotFoundException;
 import ru.yandex.mymarketappskeleton.service.OrderService;
 
 
@@ -25,11 +26,14 @@ public class OrderController {
                 .doOnNext(orders -> model.addAttribute("orders", orders))
                 .thenReturn("orders");
     }
+
     @GetMapping("/{id}")
     public Mono<String> getOrder(@PathVariable Long id,
                                  @RequestParam(defaultValue = "false") boolean newOrder,
                                  Model model) {
+
         return orderService.findById(id)
+                .switchIfEmpty(Mono.error(new OrderNotFoundException("Order not found: " + id)))
                 .doOnNext(order -> {
                     model.addAttribute("order", order);
                     model.addAttribute("newOrder", newOrder);

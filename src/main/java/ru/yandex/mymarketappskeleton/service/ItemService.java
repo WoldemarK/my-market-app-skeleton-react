@@ -25,68 +25,88 @@ public class ItemService {
     private final ItemMapper itemMapper;
 
     @Transactional
-    public Mono<PageResponse<ItemDto>> findItems(String search, SortType sortType, int pageNumber, int pageSize) {
+    public Mono<PageResponse<ItemDto>> findItems(String search,
+                                                 SortType sortType,
+                                                 int pageNumber,
+                                                 int pageSize) {
 
-        Mono<PageResponse<ItemDto>> error = getPageResponseMono(pageNumber, pageSize);
-
-        if (error != null) return error;
         SortType actualSortType = sortType != null ? sortType : SortType.ALPHA;
 
         long offset = (long) (pageNumber - 1) * pageSize;
 
-        log.debug("findItems called: search={}, sort={}, page={}, size={}", search, actualSortType, pageNumber, pageSize);
-        return itemRepository.findItems(search, actualSortType.name(), pageSize, offset)
-                .map(itemMapper::toDto)
-                .collectList()
-                .zipWith(itemRepository.countItems(search))
-                .map(tuple -> {
+        log.debug("findItems called: search={}, sort={}, page={}, size={}",
+                search,
+                actualSortType,
+                pageNumber,
+                pageSize
+        );
 
-                    List<ItemDto> items = tuple.getT1();
-                    long total = tuple.getT2();
+        return validatePage(pageNumber, pageSize)
+                .then(itemRepository.findItems(
+                                        search,
+                                        actualSortType.name(),
+                                        pageSize,
+                                        offset
+                                )
+                                .map(itemMapper::toDto)
+                                .collectList()
+                                .zipWith(itemRepository.countItems(search))
+                                .map(tuple -> {
 
-                    boolean hasPrevious = pageNumber > 1;
-                    boolean hasNext = total > (long) pageNumber * pageSize;
+                                    List<ItemDto> items = tuple.getT1();
+                                    long total = tuple.getT2();
 
-                    return new PageResponse<>(items, total, pageNumber, pageSize, hasNext, hasPrevious);
-                }).doOnSuccess(page ->
-                        log.debug("Items loaded: totalElements={}, page={}, size={}",
+                                    boolean hasPrevious = pageNumber > 1;
+                                    boolean hasNext = total > (long) pageNumber * pageSize;
+
+                                    return new PageResponse<>(
+                                            items,
+                                            total,
+                                            pageNumber,
+                                            pageSize,
+                                            hasNext,
+                                            hasPrevious
+                                    );
+                                })
+                )
+                .doOnSuccess(page ->
+                        log.debug(
+                                "Items loaded: totalElements={}, page={}, size={}",
                                 page.totalElements(),
                                 page.pageNumber(),
                                 page.pageSize()
                         ));
     }
 
-    private static Mono<PageResponse<ItemDto>> getPageResponseMono(int pageNumber, int pageSize) {
+    private Mono<Void> validatePage(int pageNumber, int pageSize) {
         if (pageNumber < 1) {
-            return Mono.error(
-                    new IllegalArgumentException("Page number must be greater than 0")
-            );
+            return Mono.error(new IllegalArgumentException("Page number must be greater than 0"));
         }
 
         if (pageSize < 1) {
-            return Mono.error(
-                    new IllegalArgumentException("Page size must be greater than 0")
-            );
+            return Mono.error(new IllegalArgumentException("Page size must be greater than 0"));
         }
-        return null;
+
+        return Mono.empty();
     }
 
     public Mono<ItemDto> findById(Long id) {
         log.debug("findById called: id={}", id);
 
         return itemRepository.findById(id)
-                .switchIfEmpty(Mono.defer(() -> {log.warn("Item not found: id={}", id);
+                .switchIfEmpty(Mono.defer(() -> {
+                    log.warn("Item not found: id={}", id);
                     return Mono.error(new ItemNotFoundException("Item not found: %d".formatted(id)));
                 }))
                 .doOnNext(item -> log.debug("Item found: id={}, title={}", item.getId(), item.getTitle()))
                 .map(itemMapper::toDto);
-
     }
 
     public Mono<List<List<ItemDto>>> groupItems(Flux<ItemDto> items) {
         return items
                 .collectList()
-                .map(list -> {log.debug("groupItems called: itemsSize={}", list.size());
+                .map(list -> {
+                    log.debug("groupItems called: itemsSize={}", list.size());
 
                     List<List<ItemDto>> result = new ArrayList<>();
 
@@ -96,8 +116,10 @@ public class ItemService {
                         while (row.size() < 3) {
                             row.add(createEmptyItem());
                         }
+
                         result.add(row);
                     }
+
                     log.debug("Items grouped into rows: rowCount={}", result.size());
 
                     return result;

@@ -16,23 +16,27 @@ import java.util.UUID;
 @Service
 public class ImageStorageService {
 
-    private final Path uploadDir = Paths.get("uploads");
+    final Path uploadDir = Paths.get("uploads");
 
     public ImageStorageService() {
         try {
             Files.createDirectories(uploadDir);
+            log.info("Upload directory initialized: {}", uploadDir.toAbsolutePath());
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            log.error("Cannot create upload directory: {}", uploadDir.toAbsolutePath(), e);
+            throw new RuntimeException("Cannot create upload dir", e);
         }
     }
 
     public Mono<String> save(FilePart file) {
+
         String original = file.filename();
 
         if (original == null || original.isBlank()) {
             log.warn("Attempt to upload empty file");
             return Mono.error(new IllegalArgumentException("Empty file"));
         }
+
         String ext = original.contains(".")
                 ? original.substring(original.lastIndexOf("."))
                 : ".jpg";
@@ -41,13 +45,20 @@ public class ImageStorageService {
 
         Path target = uploadDir.resolve(filename);
 
-        log.info("Saving file: originalName={}, generatedName={}", original, filename);
+        log.info("Saving file: originalName={}, generatedName={}",
+                original,
+                filename
+        );
+
+        String resultPath = "/images/" + filename;
 
         return file.transferTo(target)
-                .thenReturn("/images/" + filename)
-                .doOnSuccess(path -> log.info("File saved successfully: {}", target.toAbsolutePath()))
+                .thenReturn(resultPath)
+                .doOnSuccess(path -> {
+                    log.info("File saved successfully: {}", target.toAbsolutePath());
+                    log.debug("Returning image path: {}", path);
+                })
                 .doOnError(error -> log.error("Failed to save file: {}", filename, error))
-                .onErrorMap(e -> new RuntimeException("Failed to save file: " + filename, e));
-
+                .onErrorMap(error -> new RuntimeException("Failed to save file", error));
     }
 }
