@@ -33,78 +33,84 @@ public class OrderService {
     private final OrderMapper orderMapper;
 
     public Mono<Long> createOrder(String sessionId) {
+        return Mono.defer(() -> {
 
-        log.info("Create order started: sessionId={}", sessionId);
+            log.info("Create order started: sessionId={}", sessionId);
 
-        return cartService.getRawCart(sessionId)
-                .flatMap(cart -> {
-                    log.debug("Cart loaded: sessionId={}, items={}", sessionId, cart);
+            return cartService.getRawCart(sessionId)
+                    .flatMap(cart -> {
 
-                    if (cart.isEmpty()) {
-                        log.warn("Attempt to create order with empty cart: sessionId={}", sessionId);
-                        return Mono.error(new EmptyCartException());
-                    }
+                        log.debug("Cart loaded: sessionId={}, items={}", sessionId, cart);
 
-                    return itemRepository.findAllById(cart.keySet())
-                            .collectList()
-                            .flatMap(items -> {
+                        if (cart.isEmpty()) {
+                            log.warn("Attempt to create order with empty cart: sessionId={}",
+                                    sessionId
+                            );
 
-                                log.debug("Items loaded from DB: count={}", items.size());
+                            return Mono.error(new EmptyCartException());
+                        }
 
-                                Map<Long, Item> itemMap = items.stream()
-                                        .collect(Collectors.toMap(Item::getId, i -> i));
+                        return itemRepository.findAllById(cart.keySet())
+                                .collectList()
+                                .flatMap(items -> {
 
-                                Order order = new Order();
+                                    log.debug("Items loaded from DB: count={}", items.size());
 
-                                BigDecimal totalSum = BigDecimal.ZERO;
+                                    Map<Long, Item> itemMap = items.stream()
+                                            .collect(Collectors.toMap(Item::getId, i -> i));
 
-                                for (Map.Entry<Long, Integer> entry : cart.entrySet()) {
+                                    Order order = new Order();
+                                    BigDecimal totalSum = BigDecimal.ZERO;
 
-                                    Item item = itemMap.get(entry.getKey());
+                                    for (Map.Entry<Long, Integer> entry : cart.entrySet()) {
 
-                                    if (item == null) {
-                                        log.warn("Item not found in DB, skipping: itemId={}", entry.getKey());
-                                        continue;
+                                        Item item = itemMap.get(entry.getKey());
+
+                                        if (item == null) {
+                                            log.warn("Item not found in DB, skipping: itemId={}", entry.getKey());
+                                            continue;
+                                        }
+
+                                        int count = entry.getValue();
+
+                                        OrderItem orderItem = getOrderItem(order, item, count);
+
+                                        order.getItems().add(orderItem);
+
+                                        BigDecimal itemSum = item.getPrice().multiply(BigDecimal.valueOf(count));
+
+                                        totalSum = totalSum.add(itemSum);
+
+                                        log.debug("Order item added: itemId={}, count={}, sum={}",
+                                                item.getId(),
+                                                count,
+                                                itemSum
+                                        );
                                     }
 
-                                    int count = entry.getValue();
+                                    order.setTotalSum(totalSum);
 
-                                    OrderItem orderItem = getOrderItem(order, item, count);
+                                    BigDecimal finalTotalSum = totalSum;
 
-                                    order.getItems().add(orderItem);
+                                    return orderRepository.save(order)
+                                            .flatMap(saved -> {
 
-                                    BigDecimal itemSum = item.getPrice().multiply(BigDecimal.valueOf(count));
+                                                log.info("Order created successfully: orderId={}, totalSum={}",
+                                                        saved.getId(),
+                                                        finalTotalSum
+                                                );
 
-                                    totalSum = totalSum.add(itemSum);
-
-                                    log.debug("Order item added: itemId={}, count={}, sum={}",
-                                            item.getId(),
-                                            count,
-                                            itemSum
-                                    );
-                                }
-
-                                order.setTotalSum(totalSum);
-
-                                BigDecimal finalTotalSum = totalSum;
-
-                                return orderRepository.save(order)
-                                        .flatMap(saved -> {
-
-                                            log.info("Order created successfully: orderId={}, totalSum={}",
-                                                    saved.getId(),
-                                                    finalTotalSum
-                                            );
-
-                                            return cartService.clear(sessionId)
-                                                    .thenReturn(saved.getId())
-                                                    .doOnSuccess(id ->
-                                                            log.info("Cart cleared after order: sessionId={}",
-                                                                    sessionId
-                                                            ));
-                                        });
-                            });
-                });
+                                                return cartService
+                                                        .clear(sessionId)
+                                                        .thenReturn(saved.getId())
+                                                        .doOnSuccess(id -> log.info("Cart cleared after order: sessionId={}",
+                                                                        sessionId
+                                                                )
+                                                        );
+                                            });
+                                });
+                    });
+        });
     }
 
     private static OrderItem getOrderItem(Order order, Item item, int count) {
@@ -119,19 +125,24 @@ public class OrderService {
 
 
     public Flux<OrderDto> findAll() {
-        return orderRepository.findAll()
-                .map(orderMapper::toDto);
+        return Flux.defer(() ->
+                orderRepository.findAll()
+                        .map(orderMapper::toDto)
+        );
     }
 
-
     public Mono<OrderDto> findById(Long id) {
+        return Mono.defer(() -> {
 
-        log.debug("Find order by id={}", id);
+            log.debug("Find order by id={}", id);
 
-        return orderRepository.findById(id)
-                .switchIfEmpty(Mono.defer(() -> {log.warn("Order not found: id={}", id);
-                    return Mono.error(new OrderNotFoundException("Order not found: " + id));
-                }))
-                .map(orderMapper::toDto);
+            return orderRepository.findById(id)
+                    .switchIfEmpty(
+                            Mono.defer(() -> {log.warn("Order not found: id={}", id);
+                                return Mono.error(new OrderNotFoundException("Order not found: " + id));
+                            })
+                    )
+                    .map(orderMapper::toDto);
+        });
     }
 }

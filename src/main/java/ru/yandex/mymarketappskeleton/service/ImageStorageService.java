@@ -16,7 +16,7 @@ import java.util.UUID;
 @Service
 public class ImageStorageService {
 
-    final Path uploadDir = Paths.get("uploads");
+    private final Path uploadDir = Paths.get("uploads");
 
     public ImageStorageService() {
         try {
@@ -29,36 +29,38 @@ public class ImageStorageService {
     }
 
     public Mono<String> save(FilePart file) {
+        return Mono.defer(() -> {
 
-        String original = file.filename();
+            String original = file.filename();
 
-        if (original == null || original.isBlank()) {
-            log.warn("Attempt to upload empty file");
-            return Mono.error(new IllegalArgumentException("Empty file"));
-        }
+            if (original == null || original.isBlank()) {
+                log.warn("Attempt to upload empty file");
+                return Mono.error(new IllegalArgumentException("Empty file"));
+            }
 
-        String ext = original.contains(".")
-                ? original.substring(original.lastIndexOf("."))
-                : ".jpg";
+            String ext = original.contains(".")
+                    ? original.substring(original.lastIndexOf("."))
+                    : ".jpg";
 
-        String filename = UUID.randomUUID() + ext;
+            String filename = UUID.randomUUID() + ext;
+            Path target = uploadDir.resolve(filename);
+            String resultPath = "/images/" + filename;
 
-        Path target = uploadDir.resolve(filename);
+            log.info(
+                    "Saving file: originalName={}, generatedName={}",
+                    original,
+                    filename
+            );
 
-        log.info("Saving file: originalName={}, generatedName={}",
-                original,
-                filename
-        );
-
-        String resultPath = "/images/" + filename;
-
-        return file.transferTo(target)
-                .thenReturn(resultPath)
-                .doOnSuccess(path -> {
-                    log.info("File saved successfully: {}", target.toAbsolutePath());
-                    log.debug("Returning image path: {}", path);
-                })
-                .doOnError(error -> log.error("Failed to save file: {}", filename, error))
-                .onErrorMap(error -> new RuntimeException("Failed to save file", error));
+            return file.transferTo(target)
+                    .thenReturn(resultPath)
+                    .doOnSuccess(path -> {
+                        log.info("File saved successfully: {}", target.toAbsolutePath());
+                        log.debug("Returning image path: {}", path);
+                    })
+                    .doOnError(error -> log.error("Failed to save file: {}", filename, error))
+                    .onErrorMap(error -> new RuntimeException("Failed to save file", error)
+                    );
+        });
     }
 }

@@ -15,7 +15,9 @@ public class BuyController {
 
     @PostMapping("/buy")
     public Mono<String> buy(WebSession session) {
-        return orderService.createOrder(session.getId())
-                .map("redirect:/orders/%d?newOrder=true"::formatted);
+        return Mono.defer(() ->
+                orderService.createOrder(session.getId())
+                        .map("redirect:/orders/%d?newOrder=true"::formatted)
+        );
     }
 }

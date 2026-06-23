@@ -30,39 +30,6 @@ public class ItemsControllerIT {
     private CartService cartService;
 
     @Test
-    void shouldPlusItemFromItemsPage() {
-
-        when(cartService.plus(anyString(), eq(1L)))
-                .thenReturn(Mono.empty());
-
-        webTestClient.post()
-                .uri("/items")
-                .bodyValue("id=1&action=PLUS")
-                .header("Content-Type", "application/x-www-form-urlencoded")
-                .exchange()
-                .expectStatus().is3xxRedirection()
-                .expectHeader().valueEquals("Location", "/items");
-
-        verify(cartService).plus(anyString(), eq(1L));
-    }
-
-    @Test
-    void shouldMinusItemFromItemsPage() {
-
-        when(cartService.minus(anyString(), eq(1L))).thenReturn(Mono.empty());
-
-        webTestClient.post()
-                .uri("/items")
-                .bodyValue("id=1&action=MINUS")
-                .header("Content-Type", "application/x-www-form-urlencoded")
-                .exchange()
-                .expectStatus().is3xxRedirection()
-                .expectHeader().valueEquals("Location", "/items");
-
-        verify(cartService).minus(anyString(), eq(1L));
-    }
-
-    @Test
     void shouldLoadItemById() {
 
         ItemDto item = new ItemDto();

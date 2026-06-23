@@ -23,16 +23,20 @@ public class UploadController {
     public Mono<String> uploadImage(@PathVariable Long id,
                                     @RequestPart("file") FilePart file) {
 
-        return itemRepository.findById(id)
-                .switchIfEmpty(Mono.error(new ItemNotFoundException("Item not found: " + id)))
-                .flatMap(item ->
-                        imageStorageService.save(file)
-                                .map(path -> {
-                                    item.setImgPath(path);
-                                    return item;
-                                })
-                )
-                .flatMap(itemRepository::save)
-                .thenReturn("redirect:/items/" + id);
+        return Mono.defer(() ->
+                itemRepository.findById(id)
+                        .switchIfEmpty(
+                                Mono.defer(() ->
+                                        Mono.error(new ItemNotFoundException("Item not found: " + id)))
+                        )
+                        .flatMap(item -> imageStorageService.save(file)
+                                        .map(path -> {
+                                            item.setImgPath(path);
+                                            return item;
+                                        })
+                        )
+                        .flatMap(itemRepository::save)
+                        .thenReturn("redirect:/items/" + id)
+        );
     }
 }

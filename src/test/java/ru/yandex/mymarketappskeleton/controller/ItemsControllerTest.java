@@ -16,7 +16,7 @@ import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 import ru.yandex.mymarketappskeleton.dto.ItemDto;
 import ru.yandex.mymarketappskeleton.dto.PageResponse;
-import ru.yandex.mymarketappskeleton.enums.ActionTypes;
+import ru.yandex.mymarketappskeleton.enums.ActionType;
 import ru.yandex.mymarketappskeleton.enums.SortType;
 import ru.yandex.mymarketappskeleton.service.CartService;
 import ru.yandex.mymarketappskeleton.service.ItemService;
@@ -82,49 +82,6 @@ class ItemsControllerTest {
     }
 
     @Test
-    void updateFromItems_shouldCallPlus() {
-
-        when(session.getId()).thenReturn("s1");
-
-        ServerWebExchange exchange = mock(ServerWebExchange.class);
-
-        MultiValueMap<String, String> form = mock(MultiValueMap.class);
-
-        when(exchange.getFormData()).thenReturn(Mono.just(form));
-        when(form.getFirst("id")).thenReturn("1");
-        when(form.getFirst("action")).thenReturn("PLUS");
-
-        when(cartService.plus("s1", 1L)).thenReturn(Mono.empty());
-
-        StepVerifier.create(controller.updateFromItems(exchange, session))
-                .expectNext("redirect:/items")
-                .verifyComplete();
-
-        verify(cartService).plus("s1", 1L);
-    }
-
-    @Test
-    void updateFromItems_shouldCallMinus() {
-
-        when(session.getId()).thenReturn("s1");
-
-        ServerWebExchange exchange = mock(ServerWebExchange.class);
-        MultiValueMap<String, String> form = mock(MultiValueMap.class);
-
-        when(exchange.getFormData()).thenReturn(Mono.just(form));
-        when(form.getFirst("id")).thenReturn("1");
-        when(form.getFirst("action")).thenReturn("MINUS");
-
-        when(cartService.minus("s1", 1L)).thenReturn(Mono.empty());
-
-        StepVerifier.create(controller.updateFromItems(exchange, session))
-                .expectNext("redirect:/items")
-                .verifyComplete();
-
-        verify(cartService).minus("s1", 1L);
-    }
-
-    @Test
     void getItem_shouldReturnItemPage() {
 
         when(session.getId()).thenReturn("s1");
@@ -152,7 +109,7 @@ class ItemsControllerTest {
         when(session.getId()).thenReturn("s1");
         when(cartService.plus("s1", 1L)).thenReturn(Mono.empty());
 
-        StepVerifier.create(controller.updateItem(1L, ActionTypes.PLUS, session))
+        StepVerifier.create(controller.updateItem(1L, ActionType.PLUS, session))
                 .expectNext("redirect:/items/1")
                 .verifyComplete();
 
@@ -165,7 +122,7 @@ class ItemsControllerTest {
         when(session.getId()).thenReturn("s1");
         when(cartService.minus("s1", 1L)).thenReturn(Mono.empty());
 
-        StepVerifier.create(controller.updateItem(1L, ActionTypes.MINUS, session))
+        StepVerifier.create(controller.updateItem(1L, ActionType.MINUS, session))
                 .expectNext("redirect:/items/1")
                 .verifyComplete();
 

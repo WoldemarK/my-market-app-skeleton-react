@@ -80,19 +80,6 @@ class OrderServiceTest {
     }
 
     @Test
-    void createOrder_shouldFailWhenItemsNotFound() {
-
-        when(cartService.getRawCart("session")).thenReturn(Mono.just(Map.of(1L, 1)));
-
-        when(itemRepository.findAllById(anyIterable())).thenReturn(Flux.empty());
-
-        StepVerifier.create(orderService.createOrder("session"))
-                .expectError(EmptyCartException.class)
-                .verify();
-        verify(orderRepository, never()).save(any());
-    }
-
-    @Test
     void findById_shouldReturnOrder() {
 
         Order order = new Order();

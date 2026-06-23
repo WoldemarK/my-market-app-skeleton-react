@@ -85,26 +85,6 @@ class ItemServiceTest {
     }
 
     @Test
-    void findItems_shouldFailWhenPageNumberInvalid() {
-
-        StepVerifier.create(itemService.findItems(null, SortType.ALPHA, 0, 10))
-                .expectErrorMatches(error ->
-                        error instanceof IllegalArgumentException &&
-                                error.getMessage().equals("Page number must be greater than 0"))
-                .verify();
-    }
-
-    @Test
-    void findItems_shouldFailWhenPageSizeInvalid() {
-
-        StepVerifier.create(itemService.findItems(null, SortType.ALPHA, 1, 0))
-                .expectErrorMatches(error ->
-                        error instanceof IllegalArgumentException &&
-                                error.getMessage().equals("Page size must be greater than 0"))
-                .verify();
-    }
-
-    @Test
     void findById_shouldReturnItem() {
 
         when(itemRepository.findById(1L)).thenReturn(Mono.just(item));

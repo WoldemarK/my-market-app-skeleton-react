@@ -21,23 +21,28 @@ public class OrderController {
 
     @GetMapping
     public Mono<String> getOrders(Model model) {
-        return orderService.findAll()
-                .collectList()
-                .doOnNext(orders -> model.addAttribute("orders", orders))
-                .thenReturn("orders");
+        return Mono.defer(() ->
+                orderService.findAll()
+                        .collectList()
+                        .doOnNext(orders ->
+                                model.addAttribute("orders", orders))
+                        .thenReturn("orders")
+        );
     }
 
     @GetMapping("/{id}")
     public Mono<String> getOrder(@PathVariable Long id,
-                                 @RequestParam(defaultValue = "false") boolean newOrder,
+                                 @RequestParam(defaultValue = "false")
+                                 boolean newOrder,
                                  Model model) {
 
-        return orderService.findById(id)
-                .switchIfEmpty(Mono.error(new OrderNotFoundException("Order not found: " + id)))
-                .doOnNext(order -> {
-                    model.addAttribute("order", order);
-                    model.addAttribute("newOrder", newOrder);
-                })
-                .thenReturn("order");
+        return Mono.defer(() ->
+                orderService.findById(id)
+                        .doOnNext(order -> {
+                            model.addAttribute("order", order);
+                            model.addAttribute("newOrder", newOrder);
+                        })
+                        .thenReturn("order")
+        );
     }
 }

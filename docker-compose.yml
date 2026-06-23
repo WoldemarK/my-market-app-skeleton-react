@@ -35,7 +35,16 @@ services:
       timeout: 5s
       retries: 5
 
-
+  my-market-app-skeleton:
+    build: ./my-market-app-skeleton
+    container_name: my-market-app-skeleton
+    networks:
+      - my-market-app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
 
 volumes:
   postgres_data:

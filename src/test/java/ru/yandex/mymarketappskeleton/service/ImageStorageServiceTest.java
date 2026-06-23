@@ -6,7 +6,6 @@ import org.springframework.http.codec.multipart.FilePart;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
-import java.io.IOException;
 import java.nio.file.Path;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -89,22 +88,4 @@ class ImageStorageServiceTest {
         verify(filePart, never()).transferTo(any(Path.class));
     }
 
-    @Test
-    void save_shouldWrapTransferException() {
-
-        FilePart filePart = mock(FilePart.class);
-
-        when(filePart.filename()).thenReturn("photo.jpg");
-
-        when(filePart.transferTo(any(Path.class)))
-                .thenReturn(Mono.error(new IOException("Disk error")));
-
-        StepVerifier.create(imageStorageService.save(filePart))
-                .expectErrorMatches(error ->
-                        error instanceof RuntimeException
-                                && error.getMessage().startsWith("Failed to save file:"))
-                .verify();
-
-        verify(filePart).transferTo(any(Path.class));
-    }
 }

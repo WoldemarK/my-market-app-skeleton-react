@@ -27,43 +27,57 @@ public class CartController {
     @GetMapping("/items")
     public Mono<String> getCart(Model model, WebSession session) {
 
-        String sessionId = session.getId();
+        return Mono.defer(() -> {
 
-        return cartService.getRawCart(sessionId)
-                .flatMap(cart ->
-                        itemRepository.findAllById(cart.keySet())
-                                .map(item -> ItemDto.builder()
-                                        .id(item.getId())
-                                        .title(item.getTitle())
-                                        .description(item.getDescription())
-                                        .imgPath(item.getImgPath())
-                                        .price(item.getPrice().doubleValue())
-                                        .count(cart.get(item.getId()))
-                                        .build())
-                                .collectList()
-                                .map(items -> {
+            String sessionId = session.getId();
 
-                                    BigDecimal total = items.stream()
-                                            .map(i -> BigDecimal.valueOf(i.getPrice())
-                                                    .multiply(BigDecimal.valueOf(i.getCount())))
-                                            .reduce(BigDecimal.ZERO, BigDecimal::add);
+            return cartService.getRawCart(sessionId)
+                    .flatMap(cart ->
+                            itemRepository.findAllById(cart.keySet())
+                                    .map(item -> ItemDto.builder()
+                                            .id(item.getId())
+                                            .title(item.getTitle())
+                                            .description(item.getDescription())
+                                            .imgPath(item.getImgPath())
+                                            .price(item.getPrice().doubleValue())
+                                            .count(cart.get(item.getId()))
+                                            .build())
+                                    .collectList()
+                                    .map(items -> {
 
-                                    model.addAttribute("items", items);
-                                    model.addAttribute("total", total);
+                                        BigDecimal total = items.stream()
+                                                .map(i ->
+                                                        BigDecimal.valueOf(i.getPrice())
+                                                                .multiply(BigDecimal.valueOf(i.getCount()))
+                                                )
+                                                .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-                                    return "cart";
-                                }));
+                                        model.addAttribute("items", items);
+                                        model.addAttribute("total", total);
+
+                                        return "cart";
+                                    })
+                    );
+        });
     }
 
     @PostMapping("/items")
-    public Mono<String> updateCart(@RequestParam Long id, @RequestParam ActionType action, WebSession session) {
-        String sessionId = session.getId();
-        Mono<Void> result = switch (action) {
-            case PLUS -> cartService.plus(sessionId, id);
-            case MINUS -> cartService.minus(sessionId, id);
-            case DELETE -> cartService.delete(sessionId, id);
-        };
+    public Mono<String> updateCart(@RequestParam Long id,
+                                   @RequestParam ActionType action,
+                                   WebSession session) {
 
-        return result.thenReturn("redirect:/cart/items");
+        return Mono.defer(() -> {
+
+            String sessionId = session.getId();
+
+            Mono<Void> operation =
+                    switch (action) {
+                        case PLUS -> cartService.plus(sessionId, id);
+                        case MINUS -> cartService.minus(sessionId, id);
+                        case DELETE -> cartService.delete(sessionId, id);
+                    };
+
+            return operation.thenReturn("redirect:/cart/items");
+        });
     }
 }

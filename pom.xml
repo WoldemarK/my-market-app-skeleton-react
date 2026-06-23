@@ -15,7 +15,7 @@
 
     <groupId>ru.yandex</groupId>
     <artifactId>my-market-app-skeleton</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
+    <version>1.0.0-SNAPSHOT</version>
     <name>my-market-app-skeleton</name>
     <description>my-market-app-skeleton</description>
     <url/>
