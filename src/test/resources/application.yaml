@@ -11,13 +11,13 @@ spring:
 
   datasource:
     url: jdbc:postgresql://localhost:5432/market-app
-    username: ${DB_USERNAME}
-    password: ${DB_PASSWORD}
+    username: user
+    password: 123
 
   r2dbc:
     url: r2dbc:postgresql://localhost:5432/market-app
-    username: ${DB_USERNAME}
-    password: ${DB_PASSWORD}
+    username: user
+    password: 123
 
   liquibase:
     change-log: classpath:db/changelog/db.changelog-master.yaml

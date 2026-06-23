@@ -1,17 +1,24 @@
 package ru.yandex.mymarketappskeleton.dto;
 
+import lombok.AllArgsConstructor;
 import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
+@Data
 @Builder
-public record OrderDto
-        (
-                Long id,
-                List<OrderItemDto> items,
-                BigDecimal totalSum,
-                LocalDateTime orderDate
-        ) {
+@NoArgsConstructor
+@AllArgsConstructor
+public class OrderDto {
+    private Long id;
+    private List<OrderItemDto> items;
+    private BigDecimal totalSum;
+    private LocalDateTime orderDate;
 }
+
+
+

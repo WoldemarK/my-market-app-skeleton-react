@@ -1,0 +1,169 @@
+package ru.yandex.mymarketappskeleton.service;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+import reactor.test.StepVerifier;
+import ru.yandex.mymarketappskeleton.dto.ItemDto;
+import ru.yandex.mymarketappskeleton.enums.SortType;
+import ru.yandex.mymarketappskeleton.exception.ItemNotFoundException;
+import ru.yandex.mymarketappskeleton.mapper.ItemMapper;
+import ru.yandex.mymarketappskeleton.model.Item;
+import ru.yandex.mymarketappskeleton.repository.ItemRepository;
+
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+@ExtendWith(MockitoExtension.class)
+
+class ItemServiceTest {
+    @Mock
+    private ItemRepository itemRepository;
+
+    @Mock
+    private ItemMapper itemMapper;
+
+    @InjectMocks
+    private ItemService itemService;
+
+    private Item item;
+    private ItemDto itemDto;
+
+    @BeforeEach
+    void setUp() {
+        item = new Item();
+        item.setId(1L);
+        item.setTitle("Phone");
+
+        itemDto = ItemDto.builder()
+                .id(1L)
+                .title("Phone")
+                .build();
+    }
+
+    @Test
+    void findItems_shouldReturnPageResponse() {
+
+        when(itemRepository.findItems(null, "ALPHA", 10, 0)).thenReturn(Flux.just(item));
+        when(itemRepository.countItems(null)).thenReturn(Mono.just(1L));
+        when(itemMapper.toDto(item)).thenReturn(itemDto);
+
+        StepVerifier.create(itemService.findItems(null, SortType.ALPHA, 1, 10))
+                .assertNext(page -> {
+                    assertEquals(1, page.content().size());
+                    assertEquals(1L, page.totalElements());
+                    assertEquals(1, page.pageNumber());
+                    assertEquals(10, page.pageSize());
+                    assertFalse(page.hasNext());
+                    assertFalse(page.hasPrevious());
+                })
+                .verifyComplete();
+    }
+
+    @Test
+    void findItems_shouldUseDefaultSortType() {
+
+        when(itemRepository.findItems(null, "ALPHA", 10, 0)).thenReturn(Flux.just(item));
+
+        when(itemRepository.countItems(null)).thenReturn(Mono.just(1L));
+
+        when(itemMapper.toDto(item)).thenReturn(itemDto);
+
+        StepVerifier.create(itemService.findItems(null, null, 1, 10))
+                .expectNextCount(1)
+                .verifyComplete();
+
+        verify(itemRepository).findItems(null, "ALPHA", 10, 0);
+    }
+
+    @Test
+    void findItems_shouldFailWhenPageNumberInvalid() {
+
+        StepVerifier.create(itemService.findItems(null, SortType.ALPHA, 0, 10))
+                .expectErrorMatches(error ->
+                        error instanceof IllegalArgumentException &&
+                                error.getMessage().equals("Page number must be greater than 0"))
+                .verify();
+    }
+
+    @Test
+    void findItems_shouldFailWhenPageSizeInvalid() {
+
+        StepVerifier.create(itemService.findItems(null, SortType.ALPHA, 1, 0))
+                .expectErrorMatches(error ->
+                        error instanceof IllegalArgumentException &&
+                                error.getMessage().equals("Page size must be greater than 0"))
+                .verify();
+    }
+
+    @Test
+    void findById_shouldReturnItem() {
+
+        when(itemRepository.findById(1L)).thenReturn(Mono.just(item));
+        when(itemMapper.toDto(item)).thenReturn(itemDto);
+
+        StepVerifier.create(itemService.findById(1L))
+                .expectNext(itemDto)
+                .verifyComplete();
+    }
+
+    @Test
+    void findById_shouldThrowExceptionWhenNotFound() {
+
+        when(itemRepository.findById(1L)).thenReturn(Mono.empty());
+
+        StepVerifier.create(itemService.findById(1L))
+                .expectError(ItemNotFoundException.class)
+                .verify();
+    }
+
+    @Test
+    void groupItems_shouldGroupByThree() {
+
+        ItemDto first = ItemDto.builder().id(1L).build();
+        ItemDto second = ItemDto.builder().id(2L).build();
+        ItemDto third = ItemDto.builder().id(3L).build();
+        ItemDto fourth = ItemDto.builder().id(4L).build();
+
+        Flux<ItemDto> flux = Flux.just(
+                first,
+                second,
+                third,
+                fourth
+        );
+
+        StepVerifier.create(itemService.groupItems(flux))
+                .assertNext(groups -> {
+
+                    assertEquals(2, groups.size());
+
+                    assertEquals(3, groups.get(0).size());
+                    assertEquals(3, groups.get(1).size());
+
+                    assertEquals(1L, groups.get(0).get(0).getId());
+                    assertEquals(2L, groups.get(0).get(1).getId());
+                    assertEquals(3L, groups.get(0).get(2).getId());
+
+                    assertEquals(4L, groups.get(1).get(0).getId());
+                    assertEquals(-1L, groups.get(1).get(1).getId());
+                    assertEquals(-1L, groups.get(1).get(2).getId());
+                })
+                .verifyComplete();
+    }
+
+    @Test
+    void groupItems_shouldReturnEmptyList() {
+
+        StepVerifier.create(itemService.groupItems(Flux.empty()))
+                .assertNext(List::isEmpty)
+                .verifyComplete();
+    }
+}

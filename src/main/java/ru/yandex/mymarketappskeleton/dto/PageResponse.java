@@ -1,6 +1,11 @@
 package ru.yandex.mymarketappskeleton.dto;
 
-public record Paging(
+
+import java.util.List;
+
+public record PageResponse<T>(
+        List<T> content,
+        long totalElements,
         int pageNumber,
         int pageSize,
         boolean hasNext,
