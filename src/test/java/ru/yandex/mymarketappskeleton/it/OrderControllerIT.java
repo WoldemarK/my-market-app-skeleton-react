@@ -26,11 +26,14 @@ public class OrderControllerIT {
     @Test
     void shouldReturnOrdersPage() {
 
-        OrderDto o1 = new OrderDto();
-        o1.setId(1L);
+        OrderDto o1 = OrderDto.builder()
+                .id(1L)
+                .build();
 
-        OrderDto o2 = new OrderDto();
-        o2.setId(2L);
+
+        OrderDto o2 = OrderDto.builder()
+                .id(1L)
+                .build();
 
         when(orderService.findAll()).thenReturn(Flux.just(o1, o2));
 
@@ -43,8 +46,9 @@ public class OrderControllerIT {
     @Test
     void shouldReturnOrderById() {
 
-        OrderDto order = new OrderDto();
-        order.setId(1L);
+        OrderDto order = OrderDto.builder()
+                .id(1L)
+                .build();
 
         when(orderService.findById(1L)).thenReturn(Mono.just(order));
 
@@ -57,8 +61,9 @@ public class OrderControllerIT {
     @Test
     void shouldReturnOrderWithNewOrderFlag() {
 
-        OrderDto order = new OrderDto();
-        order.setId(1L);
+        OrderDto order = OrderDto.builder()
+                .id(1L)
+                .build();
 
         when(orderService.findById(1L)).thenReturn(Mono.just(order));
 

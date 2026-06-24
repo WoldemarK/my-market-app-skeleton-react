@@ -13,7 +13,7 @@ public class ItemMapper {
                 .title(item.getTitle())
                 .description(item.getDescription())
                 .imgPath(item.getImgPath())
-                .price(item.getPrice().doubleValue())
+                .price(item.getPrice())
                 .build();
 
     }

@@ -29,8 +29,8 @@ class OrderControllerTest {
     @Test
     void getOrders_shouldReturnOrdersPage() {
 
-        OrderDto order1 = new OrderDto();
-        OrderDto order2 = new OrderDto();
+        OrderDto order1 = OrderDto.builder().build();
+        OrderDto order2 = OrderDto.builder().build();
 
         when(orderService.findAll())
                 .thenReturn(Flux.just(order1, order2));
@@ -49,7 +49,7 @@ class OrderControllerTest {
     @Test
     void getOrder_shouldReturnOrderPage() {
 
-        OrderDto order = new OrderDto();
+        OrderDto order = OrderDto.builder().build();
 
         when(orderService.findById(1L)).thenReturn(Mono.just(order));
 
@@ -68,7 +68,7 @@ class OrderControllerTest {
     @Test
     void getOrder_shouldWorkWithDefaultNewOrderFalse() {
 
-        OrderDto order = new OrderDto();
+        OrderDto order = OrderDto.builder().build();
 
         when(orderService.findById(2L)).thenReturn(Mono.just(order));
 

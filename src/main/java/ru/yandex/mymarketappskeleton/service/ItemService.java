@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.reactive.TransactionalOperator;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import ru.yandex.mymarketappskeleton.dto.ItemDto;
@@ -23,13 +24,13 @@ public class ItemService {
 
     private final ItemRepository itemRepository;
     private final ItemMapper itemMapper;
+    private final TransactionalOperator transactionalOperator;
 
-    @Transactional
     public Mono<PageResponse<ItemDto>> findItems(String search,
                                                  SortType sortType,
                                                  int pageNumber,
-                                                 int pageSize) {
-
+                                                 int pageSize
+    ) {
         SortType actualSortType = sortType != null ? sortType : SortType.ALPHA;
 
         long offset = (long) (pageNumber - 1) * pageSize;
@@ -52,7 +53,6 @@ public class ItemService {
                                 .collectList()
                                 .zipWith(itemRepository.countItems(search))
                                 .map(tuple -> {
-
                                     List<ItemDto> items = tuple.getT1();
                                     long total = tuple.getT2();
 
@@ -69,6 +69,7 @@ public class ItemService {
                                     );
                                 })
                 )
+                .as(transactionalOperator::transactional)
                 .doOnSuccess(page ->
                         log.debug(
                                 "Items loaded: totalElements={}, page={}, size={}",

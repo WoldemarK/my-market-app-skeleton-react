@@ -32,9 +32,10 @@ public class ItemsControllerIT {
     @Test
     void shouldLoadItemById() {
 
-        ItemDto item = new ItemDto();
-        item.setId(1L);
-        item.setTitle("Apple");
+        ItemDto item =  ItemDto.builder()
+                .id(1L)
+                .title("Apple")
+                .build();
 
         when(itemService.findById(1L)).thenReturn(Mono.just(item));
         when(cartService.getCount(anyString(), eq(1L))).thenReturn(Mono.just(3));

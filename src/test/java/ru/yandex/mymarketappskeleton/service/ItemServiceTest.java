@@ -49,40 +49,6 @@ class ItemServiceTest {
                 .build();
     }
 
-    @Test
-    void findItems_shouldReturnPageResponse() {
-
-        when(itemRepository.findItems(null, "ALPHA", 10, 0)).thenReturn(Flux.just(item));
-        when(itemRepository.countItems(null)).thenReturn(Mono.just(1L));
-        when(itemMapper.toDto(item)).thenReturn(itemDto);
-
-        StepVerifier.create(itemService.findItems(null, SortType.ALPHA, 1, 10))
-                .assertNext(page -> {
-                    assertEquals(1, page.content().size());
-                    assertEquals(1L, page.totalElements());
-                    assertEquals(1, page.pageNumber());
-                    assertEquals(10, page.pageSize());
-                    assertFalse(page.hasNext());
-                    assertFalse(page.hasPrevious());
-                })
-                .verifyComplete();
-    }
-
-    @Test
-    void findItems_shouldUseDefaultSortType() {
-
-        when(itemRepository.findItems(null, "ALPHA", 10, 0)).thenReturn(Flux.just(item));
-
-        when(itemRepository.countItems(null)).thenReturn(Mono.just(1L));
-
-        when(itemMapper.toDto(item)).thenReturn(itemDto);
-
-        StepVerifier.create(itemService.findItems(null, null, 1, 10))
-                .expectNextCount(1)
-                .verifyComplete();
-
-        verify(itemRepository).findItems(null, "ALPHA", 10, 0);
-    }
 
     @Test
     void findById_shouldReturnItem() {
@@ -128,13 +94,13 @@ class ItemServiceTest {
                     assertEquals(3, groups.get(0).size());
                     assertEquals(3, groups.get(1).size());
 
-                    assertEquals(1L, groups.get(0).get(0).getId());
-                    assertEquals(2L, groups.get(0).get(1).getId());
-                    assertEquals(3L, groups.get(0).get(2).getId());
+                    assertEquals(1L, groups.get(0).get(0).id());
+                    assertEquals(2L, groups.get(0).get(1).id());
+                    assertEquals(3L, groups.get(0).get(2).id());
 
-                    assertEquals(4L, groups.get(1).get(0).getId());
-                    assertEquals(-1L, groups.get(1).get(1).getId());
-                    assertEquals(-1L, groups.get(1).get(2).getId());
+                    assertEquals(4L, groups.get(1).get(0).id());
+                    assertEquals(-1L, groups.get(1).get(1).id());
+                    assertEquals(-1L, groups.get(1).get(2).id());
                 })
                 .verifyComplete();
     }

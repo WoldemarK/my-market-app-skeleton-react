@@ -41,11 +41,17 @@ public class ItemsController {
                     .flatMap(page ->
                             Flux.fromIterable(page.content())
                                     .flatMap(item ->
-                                            cartService.getCount(sessionId, item.getId())
-                                                    .map(count -> {
-                                                        item.setCount(count);
-                                                        return item;
-                                                    })
+                                            cartService.getCount(sessionId, item.id())
+                                                    .map(count ->
+                                                            ItemDto.builder()
+                                                                    .id(item.id())
+                                                                    .title(item.title())
+                                                                    .description(item.description())
+                                                                    .imgPath(item.imgPath())
+                                                                    .price(item.price())
+                                                                    .count(count)
+                                                                    .build()
+                                                    )
                                     )
                                     .collectList()
                                     .flatMap(items ->
@@ -121,9 +127,17 @@ public class ItemsController {
                     .map(tuple -> {
 
                         ItemDto item = tuple.getT1();
-                        item.setCount(tuple.getT2());
 
-                        model.addAttribute("item", item);
+                        ItemDto itemWithCount = ItemDto.builder()
+                                .id(item.id())
+                                .title(item.title())
+                                .description(item.description())
+                                .imgPath(item.imgPath())
+                                .price(item.price())
+                                .count(tuple.getT2())
+                                .build();
+
+                        model.addAttribute("item", itemWithCount);
 
                         return "item";
                     });

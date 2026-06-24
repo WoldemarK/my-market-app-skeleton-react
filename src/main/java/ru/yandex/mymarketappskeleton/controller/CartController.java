@@ -39,7 +39,7 @@ public class CartController {
                                             .title(item.getTitle())
                                             .description(item.getDescription())
                                             .imgPath(item.getImgPath())
-                                            .price(item.getPrice().doubleValue())
+                                            .price(item.getPrice())
                                             .count(cart.get(item.getId()))
                                             .build())
                                     .collectList()
@@ -47,8 +47,8 @@ public class CartController {
 
                                         BigDecimal total = items.stream()
                                                 .map(i ->
-                                                        BigDecimal.valueOf(i.getPrice())
-                                                                .multiply(BigDecimal.valueOf(i.getCount()))
+                                                        BigDecimal.valueOf(i.price().doubleValue())
+                                                                .multiply(BigDecimal.valueOf(i.count()))
                                                 )
                                                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 

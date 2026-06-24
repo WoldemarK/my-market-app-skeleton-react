@@ -4,6 +4,7 @@ import org.springframework.boot.test.autoconfigure.web.reactive.AutoConfigureWeb
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -14,18 +15,32 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 public class PostgresConfigIt {
 
     @Container
-    static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16")
-            .withDatabaseName("market-app")
-            .withUsername("user")
-            .withPassword("123");
+    static PostgreSQLContainer<?> postgres =
+            new PostgreSQLContainer<>("postgres:16");
+
+    @Container
+    static GenericContainer<?> redis = new GenericContainer<>("redis:7")
+                    .withExposedPorts(6379);
 
     @DynamicPropertySource
-    static void props(DynamicPropertyRegistry r) {
-        r.add("spring.r2dbc.url", () ->
-                "r2dbc:postgresql://" + postgres.getHost() + ":" +
-                        postgres.getFirstMappedPort() + "/" + postgres.getDatabaseName());
+    static void configureProperties(DynamicPropertyRegistry registry) {
 
-        r.add("spring.r2dbc.username", postgres::getUsername);
-        r.add("spring.r2dbc.password", postgres::getPassword);
+        registry.add("spring.datasource.url", postgres::getJdbcUrl);
+        registry.add("spring.datasource.username", postgres::getUsername);
+        registry.add("spring.datasource.password", postgres::getPassword);
+
+        registry.add("spring.r2dbc.url", () -> String.format(
+                        "r2dbc:postgresql://%s:%d/%s",
+                        postgres.getHost(),
+                        postgres.getMappedPort(5432),
+                        postgres.getDatabaseName()
+                )
+        );
+
+        registry.add("spring.r2dbc.username", postgres::getUsername);
+        registry.add("spring.r2dbc.password", postgres::getPassword);
+        registry.add("spring.data.redis.host", redis::getHost);
+        registry.add("spring.data.redis.port", () -> redis.getMappedPort(6379)
+        );
     }
 }
