@@ -1,0 +1,7 @@
+package ru.yandex.mymarketappskeleton.exception;
+
+public class EmptyCartException  extends RuntimeException{
+    public EmptyCartException() {
+        super("Cart is empty");
+    }
+}

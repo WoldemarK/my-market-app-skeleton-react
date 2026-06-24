@@ -1,0 +1,55 @@
+services:
+  postgres:
+    image: postgres:15
+    container_name: market-app
+    environment:
+      POSTGRES_DB: market-app
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: 123
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - my-market-app
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U user -d market-app" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: market-redis
+    ports:
+      - "6379:6379"
+    networks:
+      - my-market-app
+    restart: always
+    volumes:
+      - redis_data:/data
+    command: [ "redis-server", "--appendonly", "yes" ]
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  my-market-app-skeleton:
+    build: ./my-market-app-skeleton
+    container_name: my-market-app-skeleton
+    networks:
+      - my-market-app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  my-market-app:
+    driver: bridge
