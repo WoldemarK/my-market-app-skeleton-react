@@ -1,0 +1,86 @@
+package ru.yandex.shop.controller;
+
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.ui.ConcurrentModel;
+import org.springframework.ui.Model;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+import reactor.test.StepVerifier;
+import ru.yandex.shop.dto.OrderDto;
+import ru.yandex.shop.service.OrderService;
+
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.*;
+
+@ExtendWith(MockitoExtension.class)
+class OrderControllerTest {
+
+
+    @Mock
+    private OrderService orderService;
+
+    @InjectMocks
+    private OrderController orderController;
+
+    @Test
+    void getOrders_shouldReturnOrdersPage() {
+
+        OrderDto order1 = OrderDto.builder().build();
+        OrderDto order2 = OrderDto.builder().build();
+
+        when(orderService.findAll())
+                .thenReturn(Flux.just(order1, order2));
+
+        Model model = new ConcurrentModel();
+
+        StepVerifier.create(orderController.getOrders(model))
+                .expectNext("orders")
+                .verifyComplete();
+
+        assertTrue(model.containsAttribute("orders"));
+
+        verify(orderService).findAll();
+    }
+
+    @Test
+    void getOrder_shouldReturnOrderPage() {
+
+        OrderDto order = OrderDto.builder().build();
+
+        when(orderService.findById(1L)).thenReturn(Mono.just(order));
+
+        Model model = new ConcurrentModel();
+
+        StepVerifier.create(orderController.getOrder(1L, true, model))
+                .expectNext("order")
+                .verifyComplete();
+
+        assertTrue(model.containsAttribute("order"));
+        assertTrue(model.containsAttribute("newOrder"));
+
+        verify(orderService).findById(1L);
+    }
+
+    @Test
+    void getOrder_shouldWorkWithDefaultNewOrderFalse() {
+
+        OrderDto order = OrderDto.builder().build();
+
+        when(orderService.findById(2L)).thenReturn(Mono.just(order));
+
+        Model model = new ConcurrentModel();
+
+        StepVerifier.create(orderController.getOrder(2L, false, model))
+                .expectNext("order")
+                .verifyComplete();
+
+        assertTrue(model.containsAttribute("order"));
+        assertTrue(model.containsAttribute("newOrder"));
+
+        verify(orderService).findById(2L);
+    }
+}

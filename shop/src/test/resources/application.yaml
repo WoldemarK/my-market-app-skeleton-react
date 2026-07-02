@@ -1,0 +1,38 @@
+spring:
+  application:
+    name: my-market-app-skeleton
+
+  session:
+    store-type: redis
+  data:
+    redis:
+      host: localhost
+      port: 6379
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/market-app
+    username: user
+    password: 123
+
+  r2dbc:
+    url: r2dbc:postgresql://localhost:5432/market-app
+    username: user
+    password: 123
+
+  liquibase:
+    change-log: classpath:db/changelog/db.changelog-master.yaml
+
+logging:
+  level:
+    root: INFO
+    org.springframework: INFO
+    org.hibernate.SQL: DEBUG
+    org.hibernate.orm.jdbc.bind: TRACE
+    com.yourpackage: DEBUG
+
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+server:
+  port: 8080
+
