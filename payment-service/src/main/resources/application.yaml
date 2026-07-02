@@ -2,5 +2,14 @@ spring:
   application:
     name: payment-service
 
+
 server:
   port: 8081
+
+payment:
+  balance: 10000
+
+logging:
+  level:
+    root: info
+    org.springframework: INFO

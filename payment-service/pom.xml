@@ -57,6 +57,12 @@
             <scope>test</scope>
         </dependency>
 
+        <dependency>
+            <groupId>org.openapitools</groupId>
+            <artifactId>jackson-databind-nullable</artifactId>
+            <version>0.2.6</version>
+        </dependency>
+
     </dependencies>
 
     <build>
@@ -64,15 +70,47 @@
         <plugins>
 
             <plugin>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-maven-plugin</artifactId>
-            </plugin>
-
-            <!-- OpenAPI SERVER -->
-            <plugin>
                 <groupId>org.openapitools</groupId>
                 <artifactId>openapi-generator-maven-plugin</artifactId>
                 <version>${openapi.generator.version}</version>
+
+                <executions>
+                    <execution>
+                        <id>generate-server</id>
+
+                        <goals>
+                            <goal>generate</goal>
+                        </goals>
+
+                        <configuration>
+
+                            <inputSpec>
+                                ${project.basedir}/openapi/payment-api.yaml
+                            </inputSpec>
+
+                            <generatorName>spring</generatorName>
+
+                            <apiPackage>ru.shop.payment.api</apiPackage>
+
+                            <modelPackage>ru.shop.payment.dto</modelPackage>
+
+                            <configOptions>
+
+                                <interfaceOnly>true</interfaceOnly>
+
+                                <useSpringBoot3>true</useSpringBoot3>
+
+                                <reactive>true</reactive>
+
+                                <useTags>true</useTags>
+
+                            </configOptions>
+
+                        </configuration>
+
+                    </execution>
+                </executions>
+
             </plugin>
 
         </plugins>
