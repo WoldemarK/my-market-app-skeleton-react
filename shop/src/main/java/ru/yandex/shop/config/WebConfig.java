@@ -8,11 +8,13 @@ import org.springframework.web.reactive.config.WebFluxConfigurer;
 @Configuration
 public class WebConfig implements WebFluxConfigurer {
 
+    private final static String IMAGES = "/images/**";
+    private final static String FILE = "file:uploads/";
 
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
-        registry.addResourceHandler("/images/**")
-                .addResourceLocations("file:uploads/");
+        registry.addResourceHandler(IMAGES)
+                .addResourceLocations(FILE);
 
     }
 }

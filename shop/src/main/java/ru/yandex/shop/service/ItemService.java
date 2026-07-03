@@ -2,6 +2,7 @@ package ru.yandex.shop.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.reactive.TransactionalOperator;
 import reactor.core.publisher.Flux;
@@ -25,6 +26,10 @@ public class ItemService {
     private final ItemMapper itemMapper;
     private final TransactionalOperator transactionalOperator;
 
+    @Cacheable(
+            value = "items-page",
+            key = "#search + '-' + (#sortType == null ? 'ALPHA' : #sortType.name()) + '-' + #pageNumber + '-' + #pageSize"
+    )
     public Mono<PageResponse<ItemDto>> findItems(String search,
                                                  SortType sortType,
                                                  int pageNumber,
@@ -90,6 +95,7 @@ public class ItemService {
         return Mono.empty();
     }
 
+    @Cacheable(value = "items", key = "#id")
     public Mono<ItemDto> findById(Long id) {
         log.debug("findById called: id={}", id);
 

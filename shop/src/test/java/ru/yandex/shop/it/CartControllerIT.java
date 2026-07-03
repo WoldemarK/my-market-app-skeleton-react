@@ -8,9 +8,9 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.web.reactive.server.WebTestClient;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import ru.yandex.mymarketappskeleton.model.Item;
-import ru.yandex.mymarketappskeleton.repository.ItemRepository;
-import ru.yandex.mymarketappskeleton.service.CartService;
+import ru.yandex.shop.model.Item;
+import ru.yandex.shop.repository.ItemRepository;
+import ru.yandex.shop.service.CartService;
 
 import java.math.BigDecimal;
 import java.util.Map;
@@ -18,7 +18,13 @@ import java.util.Map;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.when;
 
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@SpringBootTest(
+        webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
+        properties = {
+                "spring.main.allow-bean-definition-overriding=true",
+                "payment-service.url=http://localhost:8081"
+        }
+)
 @AutoConfigureWebTestClient
 public class CartControllerIT {
 
@@ -33,18 +39,32 @@ public class CartControllerIT {
 
     @Test
     void shouldReturnCartPage() {
-
         Map<Long, Integer> cart = Map.of(
                 1L, 2,
                 2L, 1
         );
 
-        Item item1 = new Item(1L, "Apple", "desc1", "/img1", BigDecimal.valueOf(10));
-        Item item2 = new Item(2L, "Banana", "desc2", "/img2", BigDecimal.valueOf(20));
+        Item item1 = new Item(
+                1L,
+                "Apple",
+                "desc1",
+                "/img1",
+                BigDecimal.valueOf(10)
+        );
 
-        when(cartService.getRawCart(anyString())).thenReturn(Mono.just(cart));
+        Item item2 = new Item(
+                2L,
+                "Banana",
+                "desc2",
+                "/img2",
+                BigDecimal.valueOf(20)
+        );
 
-        when(itemRepository.findAllById(anySet())).thenReturn(Flux.just(item1, item2));
+        when(cartService.getRawCart(anyString()))
+                .thenReturn(Mono.just(cart));
+
+        when(itemRepository.findAllById(anySet()))
+                .thenReturn(Flux.just(item1, item2));
 
         webTestClient.get()
                 .uri("/cart/items")
@@ -61,7 +81,6 @@ public class CartControllerIT {
 
     @Test
     void shouldUpdateCartPlusRedirect() {
-
         when(cartService.plus(anyString(), eq(1L))).thenReturn(Mono.empty());
 
         webTestClient.post()
@@ -73,19 +92,20 @@ public class CartControllerIT {
 
     @Test
     void shouldUpdateCartMinusRedirect() {
-
-        when(cartService.minus(anyString(), eq(1L))).thenReturn(Mono.empty());
+        when(cartService.minus(anyString(), eq(1L)))
+                .thenReturn(Mono.empty());
 
         webTestClient.post()
                 .uri("/cart/items?id=1&action=MINUS")
                 .exchange()
-                .expectStatus().is3xxRedirection()
-                .expectHeader().valueEquals("Location", "/cart/items");
+                .expectStatus()
+                .is3xxRedirection()
+                .expectHeader()
+                .valueEquals("Location", "/cart/items");
     }
 
     @Test
     void shouldDeleteItemRedirect() {
-
         when(cartService.delete(anyString(), eq(1L))).thenReturn(Mono.empty());
 
         webTestClient.post()

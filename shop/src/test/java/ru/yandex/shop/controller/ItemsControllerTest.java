@@ -57,9 +57,11 @@ class ItemsControllerTest {
                 false,
                 false);
 
-        when(itemService.findItems(null, SortType.NO, 1, 5)).thenReturn(Mono.just(page));
+        when(itemService.findItems(null, SortType.NO, 1, 5))
+                .thenReturn(Mono.just(page));
         when(cartService.getCount("s1", 1L)).thenReturn(Mono.just(2));
-        when(itemService.groupItems(any())).thenReturn(Mono.just(List.of(List.of(item))));
+        when(itemService.groupItems(any()))
+                .thenReturn(Mono.just(List.of(List.of(item))));
 
         Model model = new ConcurrentModel();
 
@@ -90,7 +92,8 @@ class ItemsControllerTest {
                 .build();
 
         when(itemService.findById(1L)).thenReturn(Mono.just(item));
-        when(cartService.getCount("s1", 1L)).thenReturn(Mono.just(3));
+        when(cartService.getCount("s1", 1L))
+                .thenReturn(Mono.just(3));
 
         Model model = new ConcurrentModel();
 
@@ -118,7 +121,8 @@ class ItemsControllerTest {
     void updateItem_shouldCallMinus() {
 
         when(session.getId()).thenReturn("s1");
-        when(cartService.minus("s1", 1L)).thenReturn(Mono.empty());
+        when(cartService.minus("s1", 1L))
+                .thenReturn(Mono.empty());
 
         StepVerifier.create(controller.updateItem(1L, ActionType.MINUS, session))
                 .expectNext("redirect:/items/1")

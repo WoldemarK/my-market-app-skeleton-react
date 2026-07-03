@@ -8,16 +8,22 @@ import org.springframework.http.client.MultipartBodyBuilder;
 import org.springframework.test.web.reactive.server.WebTestClient;
 import org.springframework.web.reactive.function.BodyInserters;
 import reactor.core.publisher.Mono;
-import ru.yandex.mymarketappskeleton.model.Item;
-import ru.yandex.mymarketappskeleton.repository.ItemRepository;
-import ru.yandex.mymarketappskeleton.service.ImageStorageService;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.boot.test.autoconfigure.web.reactive.AutoConfigureWebTestClient;
+import ru.yandex.shop.model.Item;
+import ru.yandex.shop.repository.ItemRepository;
+import ru.yandex.shop.service.ImageStorageService;
 
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@SpringBootTest(
+        webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
+        properties = {
+                "payment-service.url=http://localhost:8081",
+                "spring.main.allow-bean-definition-overriding=true"
+        }
+)
 @AutoConfigureWebTestClient
 public class UploadControllerIT {
 

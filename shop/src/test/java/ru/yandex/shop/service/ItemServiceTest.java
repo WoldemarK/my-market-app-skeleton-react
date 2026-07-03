@@ -9,16 +9,15 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
-import ru.yandex.mymarketappskeleton.dto.ItemDto;
-import ru.yandex.mymarketappskeleton.enums.SortType;
-import ru.yandex.mymarketappskeleton.exception.ItemNotFoundException;
-import ru.yandex.mymarketappskeleton.mapper.ItemMapper;
-import ru.yandex.mymarketappskeleton.model.Item;
-import ru.yandex.mymarketappskeleton.repository.ItemRepository;
+import ru.yandex.shop.dto.ItemDto;
+import ru.yandex.shop.exception.ItemNotFoundException;
+import ru.yandex.shop.mapper.ItemMapper;
+import ru.yandex.shop.model.Item;
+import ru.yandex.shop.repository.ItemRepository;
 
 import java.util.List;
 
-import static org.mockito.Mockito.verify;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -73,10 +72,21 @@ class ItemServiceTest {
     @Test
     void groupItems_shouldGroupByThree() {
 
-        ItemDto first = ItemDto.builder().id(1L).build();
-        ItemDto second = ItemDto.builder().id(2L).build();
-        ItemDto third = ItemDto.builder().id(3L).build();
-        ItemDto fourth = ItemDto.builder().id(4L).build();
+        ItemDto first = ItemDto.builder()
+                .id(1L)
+                .build();
+
+        ItemDto second = ItemDto.builder()
+                .id(2L)
+                .build();
+
+        ItemDto third = ItemDto.builder()
+                .id(3L)
+                .build();
+
+        ItemDto fourth = ItemDto.builder()
+                .id(4L)
+                .build();
 
         Flux<ItemDto> flux = Flux.just(
                 first,

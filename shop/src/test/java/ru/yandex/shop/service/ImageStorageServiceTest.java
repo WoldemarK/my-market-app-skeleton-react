@@ -8,6 +8,7 @@ import reactor.test.StepVerifier;
 
 import java.nio.file.Path;
 
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.*;
 
 class ImageStorageServiceTest {

@@ -8,12 +8,18 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.web.reactive.server.WebTestClient;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import ru.yandex.mymarketappskeleton.dto.OrderDto;
-import ru.yandex.mymarketappskeleton.service.OrderService;
+import ru.yandex.shop.dto.OrderDto;
+import ru.yandex.shop.service.OrderService;
 
 import static org.mockito.Mockito.when;
 
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@SpringBootTest(
+        webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
+        properties = {
+                "spring.main.allow-bean-definition-overriding=true",
+                "payment-service.url=http://localhost:8081"
+        }
+)
 @AutoConfigureWebTestClient
 public class OrderControllerIT {
 
@@ -40,7 +46,8 @@ public class OrderControllerIT {
         webTestClient.get()
                 .uri("/orders")
                 .exchange()
-                .expectStatus().isOk();
+                .expectStatus()
+                .isOk();
     }
 
     @Test

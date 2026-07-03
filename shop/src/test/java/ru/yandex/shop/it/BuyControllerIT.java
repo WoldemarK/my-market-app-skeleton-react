@@ -6,8 +6,8 @@ import org.springframework.boot.test.autoconfigure.web.reactive.WebFluxTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.web.reactive.server.WebTestClient;
 import reactor.core.publisher.Mono;
-import ru.yandex.mymarketappskeleton.controller.BuyController;
-import ru.yandex.mymarketappskeleton.service.OrderService;
+import ru.yandex.shop.controller.BuyController;
+import ru.yandex.shop.service.OrderService;
 
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;

@@ -20,7 +20,7 @@
     <packaging>pom</packaging>
 
     <modules>
-        <module>shop-app</module>
+        <module>shop</module>
         <module>payment-service</module>
     </modules>
 

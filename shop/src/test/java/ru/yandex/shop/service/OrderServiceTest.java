@@ -1,75 +1,128 @@
 package ru.yandex.shop.service;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.transaction.reactive.TransactionalOperator;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
-import ru.yandex.mymarketappskeleton.dto.OrderDto;
-import ru.yandex.mymarketappskeleton.exception.OrderNotFoundException;
-import ru.yandex.mymarketappskeleton.mapper.OrderMapper;
-import ru.yandex.mymarketappskeleton.model.Order;
-import ru.yandex.mymarketappskeleton.repository.OrderRepository;
+import ru.shop.payment.dto.PaymentRequest;
+import ru.shop.payment.dto.PaymentResponse;
+import ru.yandex.shop.config.client.PaymentClient;
+import ru.yandex.shop.exception.EmptyCartException;
+import ru.yandex.shop.exception.PaymentFailedException;
+import ru.yandex.shop.model.Item;
+import ru.yandex.shop.model.Order;
+import ru.yandex.shop.repository.ItemRepository;
+import ru.yandex.shop.repository.OrderRepository;
 
-import static org.mockito.Mockito.when;
+import java.math.BigDecimal;
+import java.util.Map;
+
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class OrderServiceTest {
+
+    @Mock
+    private CartService cartService;
+
+    @Mock
+    private PaymentClient paymentClient;
+
+    @Mock
+    private ItemRepository itemRepository;
+
     @Mock
     private OrderRepository orderRepository;
 
     @Mock
-    private OrderMapper orderMapper;
+    private TransactionalOperator transactionalOperator;
 
     @InjectMocks
     private OrderService orderService;
 
+    private final String sessionId = "session-1";
+    @BeforeEach
+    void setUp() {
+        lenient().when(transactionalOperator.transactional(any(Mono.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+    }
 
     @Test
-    void findById_shouldReturnOrder() {
+    void shouldCreateOrderSuccessfully() {
 
-        Order order = new Order();
-        order.setId(1L);
+        Map<Long, Integer> cart = Map.of(1L, 2);
 
-        OrderDto dto = OrderDto.builder().build();
+        Item item = new Item();
+        item.setId(1L);
+        item.setTitle("Apple");
+        item.setPrice(BigDecimal.TEN);
 
-        when(orderRepository.findById(1L)).thenReturn(Mono.just(order));
-        when(orderMapper.toDto(order)).thenReturn(dto);
+        PaymentResponse paymentResponse = new PaymentResponse();
+        paymentResponse.setSuccess(true);
 
-        StepVerifier.create(orderService.findById(1L))
-                .expectNext(dto)
+        when(cartService.getRawCart(sessionId))
+                .thenReturn(Mono.just(cart));
+
+        when(itemRepository.findAllById(cart.keySet()))
+                .thenReturn(Flux.just(item));
+
+        when(paymentClient.pay(any(PaymentRequest.class)))
+                .thenReturn(Mono.just(paymentResponse));
+
+        when(orderRepository.save(any(Order.class)))
+                .thenAnswer(invocation -> {
+                    Order order = invocation.getArgument(0);
+                    order.setId(1L);
+                    return Mono.just(order);
+                });
+
+        when(cartService.clear(sessionId))
+                .thenReturn(Mono.empty());
+
+        StepVerifier.create(orderService.createOrder(sessionId))
+                .expectNext(1L)
                 .verifyComplete();
     }
 
     @Test
-    void findById_shouldThrowWhenNotFound() {
-
-        when(orderRepository.findById(1L)).thenReturn(Mono.empty());
-
-        StepVerifier.create(orderService.findById(1L))
-                .expectError(OrderNotFoundException.class)
+    void shouldFailWhenCartEmpty() {
+        when(cartService.getRawCart(sessionId))
+                .thenReturn(Mono.just(Map.of()));
+        StepVerifier.create(orderService.createOrder(sessionId))
+                .expectError(EmptyCartException.class)
                 .verify();
     }
 
     @Test
-    void findAll_shouldReturnMappedOrders() {
+    void shouldFailWhenPaymentFails() {
 
-        Order order1 = new Order();
-        Order order2 = new Order();
+        Map<Long, Integer> cart = Map.of(1L, 1);
 
-        OrderDto dto1 = OrderDto.builder().build();
-        OrderDto dto2 = OrderDto.builder().build();
+        Item item = new Item();
+        item.setId(1L);
+        item.setPrice(BigDecimal.TEN);
 
-        when(orderRepository.findAll()).thenReturn(Flux.just(order1, order2));
-        when(orderMapper.toDto(order1)).thenReturn(dto1);
-        when(orderMapper.toDto(order2)).thenReturn(dto2);
+        PaymentResponse paymentResponse = new PaymentResponse();
+        paymentResponse.setSuccess(false);
 
-        StepVerifier.create(orderService.findAll())
-                .expectNext(dto1)
-                .expectNext(dto2)
-                .verifyComplete();
+        when(cartService.getRawCart(sessionId))
+                .thenReturn(Mono.just(cart));
+
+        when(itemRepository.findAllById(cart.keySet()))
+                .thenReturn(Flux.just(item));
+
+        when(paymentClient.pay(any(PaymentRequest.class)))
+                .thenReturn(Mono.just(paymentResponse));
+
+        StepVerifier.create(orderService.createOrder(sessionId))
+                .expectError(PaymentFailedException.class)
+                .verify();
     }
 }
