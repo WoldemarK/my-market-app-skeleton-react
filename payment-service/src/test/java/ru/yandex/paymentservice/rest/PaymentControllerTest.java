@@ -43,7 +43,7 @@ class PaymentControllerTest {
                 .expectStatus().isOk()
                 .expectBody()
                 .jsonPath("$.success").isEqualTo(true)
-                .jsonPath("$.message").isEqualTo("Payment successful");
+                .jsonPath("$.message").isEqualTo("Payment request succeeded");
     }
 
     @Test

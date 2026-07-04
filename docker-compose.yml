@@ -35,16 +35,28 @@ services:
       timeout: 5s
       retries: 5
 
-  my-market-app-skeleton:
-    build: ./my-market-app-skeleton
-    container_name: my-market-app-skeleton
-    networks:
-      - my-market-app
+  shop-app:
+    build: ./shop
+    ports:
+      - "8080:8080"
     depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+      - postgres
+      - redis
+      - payment-service
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      PAYMENT_SERVICE_URL: http://payment-service:8081
+
+  payment-service:
+    container_name: payment-service
+    build: ./payment-service
+    ports:
+      - "8081:8081"
+    depends_on:
+      - postgres
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      PAYMENT_BALANCE: 1000
 
 volumes:
   postgres_data:
