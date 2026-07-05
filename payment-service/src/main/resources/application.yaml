@@ -7,7 +7,7 @@ server:
   port: 8081
 
 payment:
-  balance: 10000
+  balance: 100000000
 
 logging:
   level:
