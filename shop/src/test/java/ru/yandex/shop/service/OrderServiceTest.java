@@ -18,7 +18,9 @@ import ru.yandex.shop.exception.EmptyCartException;
 import ru.yandex.shop.mapper.OrderMapper;
 import ru.yandex.shop.model.Item;
 import ru.yandex.shop.model.Order;
+import ru.yandex.shop.model.OrderItem;
 import ru.yandex.shop.repository.ItemRepository;
+import ru.yandex.shop.repository.OrderItemRepository;
 import ru.yandex.shop.repository.OrderRepository;
 
 import java.math.BigDecimal;
@@ -49,6 +51,9 @@ class OrderServiceTest {
     @Mock
     private TransactionalOperator transactionalOperator;
 
+    @Mock
+    private OrderItemRepository orderItemRepository;
+
     @InjectMocks
     private OrderService orderService;
 
@@ -58,7 +63,6 @@ class OrderServiceTest {
     private BalanceResponse balanceResponse;
     private PaymentRequest paymentRequest;
     private PaymentResponse paymentResponse;
-
 
 
     @BeforeEach
@@ -116,13 +120,11 @@ class OrderServiceTest {
         when(paymentClient.pay(any(PaymentRequest.class)))
                 .thenReturn(Mono.just(paymentResponse));
 
-        when(orderRepository.save(any(Order.class)))
-                .thenAnswer(invocation -> {
-            Order order = invocation.getArgument(0);
-            order.setId(1L);
-
-            return Mono.just(order);
-        });
+        when(orderItemRepository.saveAll(anyIterable()))
+                .thenAnswer(inv ->
+                        Flux.fromIterable((Iterable<OrderItem>)
+                                inv.getArgument(0))
+                );
 
         when(cartService.clear(sessionId))
                 .thenReturn(Mono.empty());

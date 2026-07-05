@@ -29,6 +29,7 @@ public class OrderItem {
 
     private Integer count;
 
-    private Order order;
+    @Column("order_id")
+    private Long orderId;
 
 }

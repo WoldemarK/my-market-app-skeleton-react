@@ -19,9 +19,13 @@ import ru.yandex.shop.model.Item;
 import ru.yandex.shop.model.Order;
 import ru.yandex.shop.model.OrderItem;
 import ru.yandex.shop.repository.ItemRepository;
+import ru.yandex.shop.repository.OrderItemRepository;
 import ru.yandex.shop.repository.OrderRepository;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -47,6 +51,8 @@ public class OrderService {
     private final ItemRepository itemRepository;
     private final OrderRepository orderRepository;
     private final TransactionalOperator transactionalOperator;
+
+    private final OrderItemRepository orderItemRepository;
 
     /**
      * Создает новый заказ на основе содержимого корзины пользователя.
@@ -121,13 +127,17 @@ public class OrderService {
                                         return Mono.error(new IllegalArgumentException("Order total must be positive"));
                                     }
 
-                                    // Заполнение заказа элементами (OrderItem)
-                                    fillOrderItems(order, cart, itemMap);
-
+                                    List<OrderItem> orderItems = buildOrderItems(cart, itemMap);
                                     order.setTotalSum(totalSum);
+                                    order.setOrderDate(LocalDateTime.now());
 
-                                    // Обработка платежа и сохранение заказа
-                                    return processPaymentAndSaveOrder(sessionId, order, totalSum);
+                                    return processPaymentAndSaveOrder
+                                            (
+                                                    sessionId,
+                                                    order,
+                                                    orderItems,
+                                                    totalSum
+                                            );
                                 });
                     });
         });
@@ -155,98 +165,85 @@ public class OrderService {
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
-    /**
-     * Заполняет заказ элементами (OrderItem) на основе корзины и карты товаров.
-     * <p>
-     * Для каждого товара в корзине создает объект OrderItem и добавляет его в заказ.
-     * Товары с количеством меньше или равным нулю пропускаются.
-     * </p>
-     *
-     * @param order   объект заказа для заполнения
-     * @param cart    карта корзины (ID товара -> количество)
-     * @param itemMap карта товаров (ID товара -> объект Item)
-     */
-    private void fillOrderItems(Order order, Map<Long, Integer> cart, Map<Long, Item> itemMap) {
+    private List<OrderItem> buildOrderItems(Map<Long, Integer> cart,
+                                            Map<Long, Item> itemMap) {
+
+        List<OrderItem> result = new ArrayList<>();
+
         for (Map.Entry<Long, Integer> entry : cart.entrySet()) {
+
             Item item = itemMap.get(entry.getKey());
-            if (item == null) continue;
 
-            int count = entry.getValue();
-            if (count <= 0) continue;
+            if (item == null || entry.getValue() <= 0) {
+                continue;
+            }
 
-            OrderItem orderItem = OrderItem.builder()
-                    .order(order)
-                    .itemId(item.getId())
-                    .title(item.getTitle())
-                    .price(item.getPrice())
-                    .count(count)
-                    .build();
-
-            order.getItems().add(orderItem);
+            result.add(
+                    OrderItem.builder()
+                            .itemId(item.getId())
+                            .title(item.getTitle())
+                            .price(item.getPrice())
+                            .count(entry.getValue())
+                            .build()
+            );
         }
+
+        return result;
     }
 
-    /**
-     * Обрабатывает платеж и сохраняет заказ.
-     * <p>
-     * Процесс включает:
-     * <ol>
-     *   <li>Запрос текущего баланса у сервиса платежей</li>
-     *   <li>Проверка достаточности средств на балансе</li>
-     *   <li>Отправка запроса на списание средств</li>
-     *   <li>Сохранение заказа в базе данных в транзакции</li>
-     *   <li>Очистка корзины после успешного сохранения</li>
-     * </ol>
-     * </p>
-     *
-     * @param sessionId идентификатор сессии пользователя
-     * @param order     объект заказа для сохранения
-     * @param totalSum  общая сумма заказа
-     * @return {@link Mono} с ID сохраненного заказа
-     * @throws InsufficientBalanceException если на балансе недостаточно средств
-     * @throws PaymentFailedException       если платеж не прошел
-     */
-    private Mono<Long> processPaymentAndSaveOrder(String sessionId, Order order, BigDecimal totalSum) {
-        // Запрос текущего баланса у сервиса платежей
-        return paymentClient.getBalance()
-                .flatMap(balanceResponse -> {
-                    // Проверка достаточности средств
-                    if (balanceResponse.getBalance().compareTo(totalSum) < 0) {
-                        log.warn("Insufficient balance: current={}, required={}",
-                                balanceResponse.getBalance(), totalSum);
+    private Mono<Long> processPaymentAndSaveOrder(
+            String sessionId,
+            Order order,
+            List<OrderItem> orderItems,
+            BigDecimal totalSum) {
 
-                        return Mono.error(new InsufficientBalanceException(
-                                String.format("Not enough balance. Current: %.2f, Required: %.2f",
-                                        balanceResponse.getBalance(), totalSum)
-                        ));
+        return paymentClient.getBalance()
+
+                .flatMap(balanceResponse -> {
+
+                    if (balanceResponse.getBalance().compareTo(totalSum) < 0) {
+                        return Mono.error(
+                                new InsufficientBalanceException(
+                                        String.format(
+                                                "Not enough balance. Current: %.2f, Required: %.2f",
+                                                balanceResponse.getBalance(),
+                                                totalSum
+                                        )
+                                )
+                        );
                     }
-                    // Создание запроса на платеж
+
                     PaymentRequest request = new PaymentRequest();
                     request.setAmount(totalSum);
 
-                    // Отправка запроса на списание средств
-                    return paymentClient.pay(request)
-                            .flatMap(payment -> {
-                                // Проверка результата платежа
-                                if (payment == null || !Boolean.TRUE.equals(payment.getSuccess())) {
-                                    log.error("Payment failed: {}", payment);
-                                    return Mono.error(new PaymentFailedException("Payment failed"));
-                                }
+                    return paymentClient.pay(request);
+                })
 
-                                log.info("Payment successful, saving order...");
+                .flatMap(payment -> {
 
-                                // Сохранение заказа в транзакции и очистка корзины
-                                return transactionalOperator.transactional(
-                                        Mono.defer(() ->
-                                                orderRepository.save(order)
-                                                        .flatMap(saved -> {
-                                                            log.info("Order saved with id: {}", saved.getId());
-                                                            return cartService.clear(sessionId)
-                                                                    .thenReturn(saved.getId());
-                                                        })
-                                        )
-                                );
-                            });
+                    if (payment == null || !Boolean.TRUE.equals(payment.getSuccess())) {
+                        return Mono.error(new PaymentFailedException("Payment failed"));
+                    }
+
+                    log.info("Payment successful, saving order...");
+
+                    return transactionalOperator.transactional(
+
+                            orderRepository.save(order)
+
+                                    .flatMap(savedOrder -> {
+
+                                        log.info("Order saved id={}", savedOrder.getId());
+
+                                        orderItems.forEach(item ->
+                                                item.setOrderId(savedOrder.getId()));
+
+                                        return orderItemRepository
+                                                .saveAll(orderItems)
+                                                .then(cartService.clear(sessionId))
+                                                .thenReturn(savedOrder.getId());
+                                    })
+                    );
                 });
     }
 
@@ -260,9 +257,12 @@ public class OrderService {
      */
     public Flux<OrderDto> findAll() {
         return orderRepository.findAll()
-                .map(orderMapper::toDto)
-                .doOnNext(dto ->
-                        log.debug("Found order: id={}", dto.id()));
+                .flatMap(order ->
+                        orderItemRepository.findByOrderId(order.getId())
+                                .collectList()
+                                .map(items ->
+                                        orderMapper.toDto(order, items))
+                );
     }
 
     /**
@@ -277,18 +277,19 @@ public class OrderService {
      * @throws OrderNotFoundException если заказ с указанным ID не найден
      */
     public Mono<OrderDto> findById(Long id) {
-        return Mono.defer(() -> {
+        log.debug("Find order by id={}", id);
 
-            log.debug("Find order by id={}", id);
-
-            return orderRepository.findById(id)
-                    .switchIfEmpty(Mono.defer(() -> {
-                        log.warn("Order not found: id={}", id);
-                        return Mono.error(new OrderNotFoundException("Order not found: " + id));
-                    }))
-                    .map(orderMapper::toDto)
-                    .doOnNext(dto ->
-                            log.debug("Order found: id={}", dto.id()));
-        });
+        return orderRepository.findById(id)
+                .switchIfEmpty(Mono.defer(() -> {
+                    log.warn("Order not found: id={}", id);
+                    return Mono.error(new OrderNotFoundException("Order not found: " + id));
+                }))
+                .flatMap(order ->
+                        orderItemRepository.findByOrderId(order.getId())
+                                .collectList()
+                                .map(items -> orderMapper.toDto(order, items)))
+                .doOnNext(dto ->
+                        log.debug("Order found: id={}", dto.id()));
     }
 }
+

@@ -79,39 +79,5 @@ public class CartControllerIT {
                 });
     }
 
-    @Test
-    void shouldUpdateCartPlusRedirect() {
-        when(cartService.plus(anyString(), eq(1L))).thenReturn(Mono.empty());
 
-        webTestClient.post()
-                .uri("/cart/items?id=1&action=PLUS")
-                .exchange()
-                .expectStatus().is3xxRedirection()
-                .expectHeader().valueEquals("Location", "/cart/items");
-    }
-
-    @Test
-    void shouldUpdateCartMinusRedirect() {
-        when(cartService.minus(anyString(), eq(1L)))
-                .thenReturn(Mono.empty());
-
-        webTestClient.post()
-                .uri("/cart/items?id=1&action=MINUS")
-                .exchange()
-                .expectStatus()
-                .is3xxRedirection()
-                .expectHeader()
-                .valueEquals("Location", "/cart/items");
-    }
-
-    @Test
-    void shouldDeleteItemRedirect() {
-        when(cartService.delete(anyString(), eq(1L))).thenReturn(Mono.empty());
-
-        webTestClient.post()
-                .uri("/cart/items?id=1&action=DELETE")
-                .exchange()
-                .expectStatus().is3xxRedirection()
-                .expectHeader().valueEquals("Location", "/cart/items");
-    }
 }

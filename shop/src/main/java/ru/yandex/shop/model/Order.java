@@ -29,6 +29,4 @@ public class Order {
     @Column("order_date")
     private LocalDateTime orderDate;
 
-    @Builder.Default
-    private List<OrderItem> items = new ArrayList<>();
 }
