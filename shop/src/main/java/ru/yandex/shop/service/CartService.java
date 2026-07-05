@@ -16,7 +16,7 @@ public class CartService {
     private final ReactiveStringRedisTemplate redisTemplate;
 
     private String key(String sessionId) {
-        return "cart:" + sessionId;
+        return "cart:" + sessionId.toUpperCase();
     }
 
     public Mono<Void> plus(String sessionId, Long itemId) {
@@ -24,7 +24,7 @@ public class CartService {
                 redisTemplate.opsForHash()
                         .increment(key(sessionId), itemId.toString(), 1)
                         .doOnNext(value ->
-                                log.info("PLUS itemId={}, sessionId={}, value={}",
+                                log.info("PLUS itemId={}, SESSION={}, value={}",
                                         itemId,
                                         sessionId,
                                         value
@@ -44,7 +44,7 @@ public class CartService {
                     .increment(key, field, -1)
                     .flatMap(value -> {
 
-                        log.info("MINUS itemId={}, sessionId={}, value={}",
+                        log.info("MINUS itemId={}, SESSION={}, value={}",
                                 itemId,
                                 sessionId,
                                 value
@@ -54,7 +54,7 @@ public class CartService {
                             return redisTemplate.opsForHash()
                                     .remove(key, field)
                                     .doOnSuccess(v ->
-                                            log.info("DELETE (auto) itemId={}, sessionId={}",
+                                            log.info("DELETE (auto) itemId={}, SESSION={}",
                                                     itemId,
                                                     sessionId
                                             )
@@ -72,7 +72,7 @@ public class CartService {
         return Mono.defer(() ->
                 redisTemplate.opsForHash()
                         .remove(key(sessionId), itemId.toString())
-                        .doOnSuccess(v -> log.info("DELETE itemId={}, sessionId={}",
+                        .doOnSuccess(v -> log.info("DELETE itemId={}, SESSION={}",
                                         itemId,
                                         sessionId
                                 )

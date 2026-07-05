@@ -27,7 +27,7 @@ class SessionConfigTest {
     @Autowired
     private WebTestClient webTestClient;
 
-    private final static String SESSION = "sessionId";
+    private final static String SESSION = "SESSION";
     private final static String TEST_URL = "/test";
     private final static String KEY = "spring:session:sessions:*";
 
