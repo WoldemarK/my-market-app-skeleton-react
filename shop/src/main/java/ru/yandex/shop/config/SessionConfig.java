@@ -15,29 +15,21 @@ import org.springframework.web.server.session.WebSessionIdResolver;
 import java.time.Duration;
 @Slf4j
 @Configuration
-@EnableRedisWebSession()
 public class SessionConfig {
 
 
     @Bean
     public WebSessionIdResolver webSessionIdResolver() {
-        CookieWebSessionIdResolver resolver = new CookieWebSessionIdResolver() {
-            @Override
-            public void setSessionId(ServerWebExchange exchange, String sessionId) {
-                log.info("=== SETTING SESSION COOKIE ===");
-                log.info("Session ID: {}", sessionId);
-                super.setSessionId(exchange, sessionId);
-            }
-        };
+
+        CookieWebSessionIdResolver resolver = new CookieWebSessionIdResolver();
 
         resolver.setCookieName("SESSION");
 
-        resolver.addCookieInitializer(builder -> {
-            builder.path("/");
-            builder.httpOnly(false); // временно false для отладки
-            builder.sameSite("Lax");
-            builder.secure(false);
-            builder.maxAge(Duration.ofSeconds(1800));
+        resolver.addCookieInitializer(cookie -> {
+            cookie.path("/");
+            cookie.httpOnly(true);
+            cookie.sameSite("Lax");
+            cookie.secure(false);
         });
 
         return resolver;

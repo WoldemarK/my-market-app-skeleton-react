@@ -80,16 +80,16 @@ public class GlobalExceptionHandler {
                 .body(body));
     }
 
-    @ExceptionHandler(Exception.class)
-    public Mono<ResponseEntity<Map<String, String>>> handleGenericException(Exception ex) {
-        log.error("Unexpected error: {}", ex.getMessage(), ex);
-
-        Map<String, String> body = new HashMap<>();
-        body.put("code", "INTERNAL_ERROR");
-        body.put("message", "An unexpected error occurred");
-
-        return Mono.just(ResponseEntity
-                .status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(body));
-    }
+//    @ExceptionHandler(Exception.class)
+//    public Mono<ResponseEntity<Map<String, String>>> handleGenericException(Exception ex) {
+//        log.error("Unexpected error: {}", ex.getMessage(), ex);
+//
+//        Map<String, String> body = new HashMap<>();
+//        body.put("code", "INTERNAL_ERROR");
+//        body.put("message", "An unexpected error occurred");
+//
+//        return Mono.just(ResponseEntity
+//                .status(HttpStatus.INTERNAL_SERVER_ERROR)
+//                .body(body));
+//    }
 }

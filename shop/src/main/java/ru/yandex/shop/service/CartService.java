@@ -16,7 +16,7 @@ public class CartService {
     private final ReactiveStringRedisTemplate redisTemplate;
 
     private String key(String sessionId) {
-        return "cart:" + sessionId.toUpperCase();
+        return "cart:" + sessionId;
     }
 
     public Mono<Void> plus(String sessionId, Long itemId) {

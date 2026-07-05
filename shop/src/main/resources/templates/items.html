@@ -132,33 +132,30 @@
                        th:text="${item.description}">
                     </p>
 
-                    <!-- ВАЖНО: отдельная форма для КАЖДОГО товара -->
                     <form method="post"
-                          th:action="@{/items}"
-                          th:data-item-id="${item.id}">
+                          th:action="@{/items}">
 
                         <div class="hstack gap-3">
 
-                            <!-- ЯВНО УКАЗЫВАЕМ ID ТОВАРА -->
                             <input type="hidden"
                                    name="id"
-                                   th:value="${item.id}"/>
+                                   th:value="${item.id}">
 
                             <input type="hidden"
                                    name="search"
-                                   th:value="${search}"/>
+                                   th:value="${search}">
 
                             <input type="hidden"
                                    name="sort"
-                                   th:value="${sort}"/>
+                                   th:value="${sort}">
 
                             <input type="hidden"
                                    name="pageSize"
-                                   th:value="${paging.pageSize}"/>
+                                   th:value="${paging.pageSize}">
 
                             <input type="hidden"
                                    name="pageNumber"
-                                   th:value="${paging.pageNumber}"/>
+                                   th:value="${paging.pageNumber}">
 
                             <button type="submit"
                                     class="btn btn-outline-secondary"
@@ -185,12 +182,6 @@
 
                         </div>
                     </form>
-
-                    <!-- ОТЛАДОЧНАЯ ИНФОРМАЦИЯ -->
-                    <div style="margin-top: 10px; padding: 5px; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 4px; font-size: 12px;">
-                        <strong>Отладка:</strong> ID товара = <span th:text="${item.id}" style="color: blue; font-weight: bold;"></span>
-                        | Количество в корзине = <span th:text="${item.count}" style="color: green; font-weight: bold;"></span>
-                    </div>
 
                 </div>
             </div>
@@ -235,27 +226,9 @@
 
 </div>
 
-<!-- JavaScript для отладки -->
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Проверяем все формы на странице
-        const forms = document.querySelectorAll('form[action="/items"]');
-        console.log('Найдено форм:', forms.length);
-
-        forms.forEach((form, index) => {
-            const idInput = form.querySelector('input[name="id"]');
-            const actionInput = form.querySelector('button[name="action"]');
-
-            console.log(`Форма ${index + 1}:`);
-            console.log('  - ID:', idInput ? idInput.value : 'НЕТ!');
-            console.log('  - Action кнопка:', actionInput ? actionInput.value : 'НЕТ!');
-            console.log('  - Все hidden поля:', Array.from(form.querySelectorAll('input[type="hidden"]')).map(el => `${el.name}=${el.value}`));
-        });
-    });
-</script>
-
 <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.min.js"></script>
 
 </body>
 </html>
+```
