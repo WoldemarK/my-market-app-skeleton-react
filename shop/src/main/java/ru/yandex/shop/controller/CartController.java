@@ -2,9 +2,11 @@ package ru.yandex.shop.controller;
 
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ServerWebExchange;
 import org.springframework.web.server.WebSession;
 import reactor.core.publisher.Mono;
 import ru.yandex.shop.dto.ItemDto;
@@ -14,6 +16,7 @@ import ru.yandex.shop.service.CartService;
 
 import java.math.BigDecimal;
 
+@Slf4j
 @Controller
 @RequiredArgsConstructor
 @RequestMapping("/cart")
@@ -24,7 +27,7 @@ public class CartController {
 
     @GetMapping("/items")
     public Mono<String> getCart(Model model, WebSession session) {
-
+        log.info("getCart: {} , {}", model, session);
         return Mono.defer(() -> {
 
             String sessionId = session.getId();
@@ -60,22 +63,27 @@ public class CartController {
     }
 
     @PostMapping("/items")
-    public Mono<String> updateCart(@RequestParam Long id,
-                                   @RequestParam ActionType action,
-                                   WebSession session) {
+    public Mono<String> updateCart(ServerWebExchange exchange) {
 
-        return Mono.defer(() -> {
+        return exchange.getFormData()
+                .flatMap(form -> {
 
-            String sessionId = session.getId();
+                    Long id = Long.valueOf(form.getFirst("id"));
+                    ActionType action = ActionType.valueOf(form.getFirst("action"));
 
-            Mono<Void> operation =
-                    switch (action) {
-                        case PLUS -> cartService.plus(sessionId, id);
-                        case MINUS -> cartService.minus(sessionId, id);
-                        case DELETE -> cartService.delete(sessionId, id);
-                    };
+                    log.info("id={}, action={}", id, action);
 
-            return operation.thenReturn("redirect:/cart/items");
-        });
+                    return exchange.getSession()
+                            .flatMap(session -> {
+
+                                Mono<Void> operation = switch (action) {
+                                    case PLUS -> cartService.plus(session.getId(), id);
+                                    case MINUS -> cartService.minus(session.getId(), id);
+                                    case DELETE -> cartService.delete(session.getId(), id);
+                                };
+
+                                return operation.thenReturn("redirect:/cart/items");
+                            });
+                });
     }
 }
