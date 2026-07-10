@@ -1,0 +1,56 @@
+spring:
+  application:
+    name: shop-app
+
+  session:
+    store-type: redis
+    timeout: 30m
+    redis:
+      namespace: spring:session
+
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      timeout: 2s
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 0
+
+  cache:
+    type: redis
+    redis:
+      time-to-live: 300000
+      cache-null-values: false
+
+  r2dbc:
+    url: r2dbc:postgresql://localhost:5432/market-app
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+
+
+  liquibase:
+    change-log: classpath:db/changelog/db.changelog-master.yaml
+    url: jdbc:postgresql://localhost:5432/market-app
+    user: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+
+logging:
+  level:
+    root: INFO
+    org.springframework: INFO
+    org.hibernate.SQL: DEBUG
+    org.hibernate.orm.jdbc.bind: TRACE
+    com.yourpackage: DEBUG
+
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+server:
+  port: 8080
+
+
+payment-service:
+   url: http://localhost:8081

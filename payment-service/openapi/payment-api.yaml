@@ -1,0 +1,75 @@
+openapi: 3.0.3
+
+info:
+  title: Payment Service API
+  description: The payment service works with the store service
+  version: 1.0.0
+  contact:
+    name: Kovtunov Vladimir
+    email: kovtynov.vladimir@gmail.com
+    url: https://www.linkedin.com/in/vladimir-kovtynov/
+
+servers:
+  - url: http://localhost:8081
+
+paths:
+
+  /api/payment/balance:
+    get:
+      summary: Get account balance
+      operationId: getBalance
+      responses:
+        '200':
+          description: Current balance
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BalanceResponse'
+
+  /api/payment:
+    post:
+      summary: Make payment
+      operationId: makePayment
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PaymentRequest'
+
+      responses:
+        '200':
+          description: Payment result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentResponse'
+
+components:
+
+  schemas:
+
+    BalanceResponse:
+      type: object
+      properties:
+        balance:
+          type: number
+          format: decimal
+
+    PaymentRequest:
+      type: object
+      required:
+        - amount
+      properties:
+        amount:
+          type: number
+          format: decimal
+
+    PaymentResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
