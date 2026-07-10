@@ -25,19 +25,17 @@ spring:
       time-to-live: 300000
       cache-null-values: false
 
-
-  datasource:
-    url: jdbc:postgresql://localhost:5432/market-app
-    username: ${DB_USERNAME}
-    password: ${DB_PASSWORD}
-
   r2dbc:
     url: r2dbc:postgresql://localhost:5432/market-app
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
 
+
   liquibase:
     change-log: classpath:db/changelog/db.changelog-master.yaml
+    url: jdbc:postgresql://localhost:5432/market-app
+    user: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
 
 logging:
   level:
