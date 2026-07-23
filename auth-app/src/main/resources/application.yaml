@@ -1,0 +1,21 @@
+server:
+  port: 8087
+
+spring:
+  application:
+    name: auth-app
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:8080/realms/task-realm
+
+keycloak:
+  server-url: http://localhost:8080
+  realm: task-realm
+  client-id: task-client
+  client-secret: XnS2z4EeHY6vkTeDGTGgHfzBNyGT9Ck1
+  admin:
+    username: admin
+    password: admin

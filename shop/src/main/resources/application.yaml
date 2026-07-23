@@ -11,7 +11,7 @@ spring:
         registration:
           keycloak:
             client-id: shop-app
-            client-secret: mVEzwJVUckH82gn22m4ntabwFXj1VAgm
+            client-secret: G7lxD1V4oAJnPFFa5OelPZlQQQ8H746W
             authorization-grant-type: authorization_code
             scope:
               - openid
