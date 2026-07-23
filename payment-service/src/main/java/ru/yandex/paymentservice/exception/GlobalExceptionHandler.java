@@ -21,5 +21,10 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.PAYMENT_REQUIRED)
                 .body(body);
     }
-
+    @ExceptionHandler(AccountNotFoundException.class)
+    public ResponseEntity<?> handle(AccountNotFoundException e) {
+        return ResponseEntity
+                .status(HttpStatus.NOT_FOUND)
+                .body(Map.of("error", e.getMessage()));
+    }
 }

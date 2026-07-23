@@ -19,13 +19,12 @@ public class OrderController {
 
     @GetMapping
     public Mono<String> getOrders(Model model) {
-        return Mono.defer(() ->
-                orderService.findAll()
-                        .collectList()
-                        .doOnNext(orders ->
-                                model.addAttribute("orders", orders))
-                        .thenReturn("orders")
-        );
+        return orderService.findAll()
+                .collectList()
+                .doOnNext(orders -> {
+                    model.addAttribute("orders", orders);
+                })
+                .thenReturn("orders");
     }
 
     @GetMapping("/{id}")
