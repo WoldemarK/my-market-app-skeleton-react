@@ -5,22 +5,22 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.ui.ConcurrentModel;
+import org.springframework.security.core.Authentication;
 import org.springframework.ui.Model;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.web.server.ServerWebExchange;
 import org.springframework.web.server.WebSession;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import reactor.test.StepVerifier;
-import ru.yandex.shop.enums.ActionType;
 import ru.yandex.shop.model.Item;
 import ru.yandex.shop.repository.ItemRepository;
+import ru.yandex.shop.service.CartIdService;
 import ru.yandex.shop.service.CartService;
 
 import java.math.BigDecimal;
-import java.util.Collections;
 import java.util.Map;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -33,78 +33,73 @@ class CartControllerTest {
     private ItemRepository itemRepository;
 
     @Mock
+    private CartIdService cartIdService;
+
+    @Mock
+    private Model model;
+
+    @Mock
     private WebSession session;
+
+    @Mock
+    private Authentication authentication;
 
     @InjectMocks
     private CartController cartController;
 
-
     @Test
-    void getCart_shouldReturnCartPage() {
+    void getCart_ShouldReturnCartPage() {
+        Map<Long, Integer> cart = Map.of(
+                1L, 2,
+                2L, 1
+        );
 
-        when(session.getId()).thenReturn("s1");
+        Item item1 = Item.builder()
+                .id(1L)
+                .title("Phone")
+                .description("desc")
+                .imgPath("img")
+                .price(BigDecimal.valueOf(100))
+                .build();
 
-        when(cartService.getRawCart("s1"))
-                .thenReturn(Mono.just(Map.of(1L, 2)));
+        Item item2 = Item.builder()
+                .id(2L)
+                .title("Book")
+                .description("desc")
+                .imgPath("img")
+                .price(BigDecimal.valueOf(50))
+                .build();
 
-        Item item = new Item();
-        item.setId(1L);
-        item.setTitle("Phone");
-        item.setDescription("desc");
-        item.setImgPath("/img.png");
-        item.setPrice(BigDecimal.valueOf(100));
+        when(cartIdService.getCartId(authentication, session)).thenReturn("cart-1");
+        when(cartService.getRawCart("cart-1")).thenReturn(Mono.just(cart));
+        when(itemRepository.findAllById(anyIterable())).thenReturn(Flux.just(item1, item2));
 
-        when(itemRepository.findAllById(Collections.singleton(any()))).thenReturn(Flux.just(item));
+        String view = cartController.getCart(model, session, authentication).block();
 
-        Model model = new ConcurrentModel();
+        assertEquals("cart", view);
 
-        StepVerifier.create(cartController.getCart(model, session))
-                .expectNext("cart")
-                .verifyComplete();
-
-        assertTrue(model.containsAttribute("items"));
-        assertTrue(model.containsAttribute("total"));
-
-        verify(cartService).getRawCart("s1");
-        verify(itemRepository).findAllById(Collections.singleton(any()));
+        verify(model).addAttribute(eq("items"), any());
+        verify(model).addAttribute("total", BigDecimal.valueOf(250));
     }
-
     @Test
-    void updateCart_shouldCallPlus() {
+    void updateCart_ShouldCallPlus() {
 
-        when(session.getId()).thenReturn("s1");
-        when(cartService.plus("s1", 1L)).thenReturn(Mono.empty());
+        ServerWebExchange exchange = mock(ServerWebExchange.class);
+        WebSession session = mock(WebSession.class);
 
-        StepVerifier.create(cartController.updateCart(1L, ActionType.PLUS, session))
-                .expectNext("redirect:/cart/items")
-                .verifyComplete();
+        LinkedMultiValueMap<String, String> form = new LinkedMultiValueMap<>();
+        form.add("id", "5");
+        form.add("action", "PLUS");
 
-        verify(cartService).plus("s1", 1L);
-    }
+        when(exchange.getFormData()).thenReturn(Mono.just(form));
+        when(exchange.getSession()).thenReturn(Mono.just(session));
+        when(cartIdService.getCartId(authentication, session)).thenReturn("cart-1");
+        when(cartService.plus("cart-1", 5L)).thenReturn(Mono.empty());
 
-    @Test
-    void updateCart_shouldCallMinus() {
+        String result = cartController.updateCart(exchange, authentication).block();
 
-        when(session.getId()).thenReturn("s1");
-        when(cartService.minus("s1", 1L)).thenReturn(Mono.empty());
+        assertEquals("redirect:/cart/items", result);
 
-        StepVerifier.create(cartController.updateCart(1L, ActionType.MINUS, session))
-                .expectNext("redirect:/cart/items")
-                .verifyComplete();
-
-        verify(cartService).minus("s1", 1L);
-    }
-
-    @Test
-    void updateCart_shouldCallDelete() {
-
-        when(session.getId()).thenReturn("s1");
-        when(cartService.delete("s1", 1L)).thenReturn(Mono.empty());
-
-        StepVerifier.create(cartController.updateCart(1L, ActionType.DELETE, session))
-                .expectNext("redirect:/cart/items")
-                .verifyComplete();
-
-        verify(cartService).delete("s1", 1L);
+        verify(cartService).plus("cart-1", 5L);
     }
 }

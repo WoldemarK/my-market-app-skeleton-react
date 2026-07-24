@@ -22,7 +22,11 @@ public class CartService {
     public Mono<Void> plus(String sessionId, Long itemId) {
         return Mono.defer(() ->
                 redisTemplate.opsForHash()
-                        .increment(key(sessionId), itemId.toString(), 1)
+                        .increment(
+                                key(sessionId),
+                                itemId.toString(),
+                                1
+                        )
                         .doOnNext(value ->
                                 log.info("PLUS itemId={}, SESSION={}, value={}",
                                         itemId,
@@ -108,7 +112,10 @@ public class CartService {
     public Mono<Integer> getCount(String sessionId, Long itemId) {
         return Mono.defer(() ->
                 redisTemplate.opsForHash()
-                        .get(key(sessionId), itemId.toString())
+                        .get(
+                                key(sessionId),
+                                itemId.toString()
+                        )
                         .map(value -> Integer.parseInt(value.toString()))
                         .switchIfEmpty(Mono.just(0))
                         .doOnNext(count ->

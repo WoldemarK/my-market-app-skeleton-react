@@ -1,6 +1,7 @@
 package ru.yandex.shop.controller;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
@@ -12,8 +13,11 @@ import ru.yandex.shop.dto.ItemDto;
 import ru.yandex.shop.dto.Paging;
 import ru.yandex.shop.enums.ActionType;
 import ru.yandex.shop.enums.SortType;
+import ru.yandex.shop.service.CartIdService;
 import ru.yandex.shop.service.CartService;
 import ru.yandex.shop.service.ItemService;
+
+import java.util.Objects;
 
 @Controller
 @RequiredArgsConstructor
@@ -21,25 +25,26 @@ public class ItemsController {
 
     private final ItemService itemService;
     private final CartService cartService;
-
+    private final CartIdService cartIdService;
 
     @GetMapping({"/", "/items"})
     public Mono<String> getItems(@RequestParam(required = false) String search,
                                  @RequestParam(defaultValue = "NO") SortType sort,
                                  @RequestParam(defaultValue = "1") int pageNumber,
                                  @RequestParam(defaultValue = "5") int pageSize,
+                                 Authentication authentication,
                                  WebSession session,
                                  Model model) {
 
         return Mono.defer(() -> {
 
-            String sessionId = session.getId();
+            String cartId = cartIdService.getCartId(authentication, session);
 
             return itemService.findItems(search, sort, pageNumber, pageSize)
                     .flatMap(page ->
                             Flux.fromIterable(page.content())
                                     .flatMap(item ->
-                                            cartService.getCount(sessionId, item.id())
+                                            cartService.getCount(cartId, item.id())
                                                     .map(count ->
                                                             ItemDto.builder()
                                                                     .id(item.id())
@@ -77,51 +82,54 @@ public class ItemsController {
     }
 
     @PostMapping("/items")
-    public Mono<String> updateFromItems(ServerWebExchange exchange,
-                                        WebSession session) {
+    public Mono<String> updateFromItems(ServerWebExchange exchange, Authentication authentication) {
+        return exchange.getFormData()
+                .flatMap(form -> {
 
-        return Mono.defer(() ->
-                exchange.getFormData()
-                        .flatMap(form -> {
+                    Long id = Long.valueOf(Objects.requireNonNull(form.getFirst("id")));
+                    ActionType action = ActionType.valueOf(form.getFirst("action"));
 
-                            Long id = Long.valueOf(form.getFirst("id"));
+                    return exchange.getSession()
+                            .flatMap(session -> {
 
-                            ActionType action = ActionType.valueOf(form.getFirst("action"));
+                                String cartId = cartIdService.getCartId(authentication, session);
 
-                            Mono<Void> operation = switch (action) {
-                                case PLUS -> cartService.plus(session.getId(), id);
-                                case MINUS -> cartService.minus(session.getId(), id);
-                                case DELETE -> cartService.delete(session.getId(), id);
-                            };
+                                Mono<Void> operation = switch (action) {
+                                    case PLUS -> cartService.plus(cartId, id);
+                                    case MINUS -> cartService.minus(cartId, id);
+                                    case DELETE -> cartService.delete(cartId, id);
+                                };
 
-                            String search = form.getFirst("search");
-                            String sort = form.getFirst("sort");
-                            String pageNumber = form.getFirst("pageNumber");
-                            String pageSize = form.getFirst("pageSize");
+                                String search = form.getFirst("search");
+                                String sort = form.getFirst("sort");
+                                String pageNumber = form.getFirst("pageNumber");
+                                String pageSize = form.getFirst("pageSize");
 
-                            return operation.thenReturn(
-                                    "redirect:/items?search=%s&sort=%s&pageNumber=%s&pageSize=%s"
-                                            .formatted(
-                                                    search,
-                                                    sort,
-                                                    pageNumber,
-                                                    pageSize
-                                            )
-                            );
-                        })
-        );
+                                return operation.thenReturn(
+                                        "redirect:/items?search=%s&sort=%s&pageNumber=%s&pageSize=%s"
+                                                .formatted(
+                                                        search,
+                                                        sort,
+                                                        pageNumber,
+                                                        pageSize
+                                                )
+                                );
+                            });
+                });
     }
 
-
     @GetMapping("/items/{id}")
-    public Mono<String> getItem(@PathVariable Long id, WebSession session, Model model) {
+    public Mono<String> getItem(@PathVariable Long id,
+                                Authentication authentication,
+                                WebSession session,
+                                Model model) {
 
         return Mono.defer(() -> {
 
-            String sessionId = session.getId();
+            String cartId = cartIdService.getCartId(authentication, session);
 
             return itemService.findById(id)
-                    .zipWith(cartService.getCount(sessionId, id))
+                    .zipWith(cartService.getCount(cartId, id))
                     .map(tuple -> {
 
                         ItemDto item = tuple.getT1();
@@ -139,22 +147,6 @@ public class ItemsController {
 
                         return "item";
                     });
-        });
-    }
-
-
-    @PostMapping("/items/{id}")
-    public Mono<String> updateItem(@PathVariable Long id, @RequestParam ActionType action, WebSession session) {
-
-        return Mono.defer(() -> {
-
-            Mono<Void> operation = switch (action) {
-                case PLUS -> cartService.plus(session.getId(), id);
-                case MINUS -> cartService.minus(session.getId(), id);
-                case DELETE -> cartService.delete(session.getId(), id);
-            };
-
-            return operation.thenReturn("redirect:/items/" + id);
         });
     }
 }

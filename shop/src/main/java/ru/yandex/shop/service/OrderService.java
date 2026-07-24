@@ -158,9 +158,13 @@ public class OrderService {
         return cart.entrySet()
                 .stream()
                 .map(entry -> {
+
                     Item item = itemMap.get(entry.getKey());
+
                     if (item == null) return BigDecimal.ZERO;
-                    return item.getPrice().multiply(BigDecimal.valueOf(entry.getValue()));
+
+                    return item.getPrice()
+                            .multiply(BigDecimal.valueOf(entry.getValue()));
                 })
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
     }

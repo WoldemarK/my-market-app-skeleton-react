@@ -22,6 +22,7 @@
     <modules>
         <module>shop</module>
         <module>payment-service</module>
+        <module>auth-app</module>
     </modules>
 
     <properties>

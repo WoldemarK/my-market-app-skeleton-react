@@ -1,6 +1,36 @@
+server:
+  port: 8085
+
 spring:
   application:
     name: shop-app
+
+  security:
+    oauth2:
+      client:
+        registration:
+          keycloak:
+            client-id: shop-app
+            client-secret: G7lxD1V4oAJnPFFa5OelPZlQQQ8H746W
+            authorization-grant-type: authorization_code
+            scope:
+              - openid
+              - profile
+              - email
+
+          payment:
+            provider: keycloak
+            client-id: shop-app
+            client-secret: G7lxD1V4oAJnPFFa5OelPZlQQQ8H746W
+            authorization-grant-type: client_credentials
+            scope:
+              - payments.read
+              - payments.write
+
+        provider:
+          keycloak:
+            issuer-uri:
+              http://localhost:8080/realms/shop-realm
 
   session:
     store-type: redis
@@ -48,9 +78,6 @@ logging:
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
 
-server:
-  port: 8080
-
 
 payment-service:
-   url: http://localhost:8081
+  url: http://localhost:8086
