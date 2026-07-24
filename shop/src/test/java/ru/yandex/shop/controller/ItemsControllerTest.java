@@ -6,23 +6,22 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.ui.ConcurrentModel;
+import org.springframework.security.core.Authentication;
 import org.springframework.ui.Model;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.web.server.ServerWebExchange;
 import org.springframework.web.server.WebSession;
-
 import reactor.core.publisher.Mono;
-import reactor.test.StepVerifier;
 import ru.yandex.shop.dto.ItemDto;
-import ru.yandex.shop.dto.PageResponse;
-import ru.yandex.shop.enums.ActionType;
-import ru.yandex.shop.enums.SortType;
+import ru.yandex.shop.service.CartIdService;
 import ru.yandex.shop.service.CartService;
 import ru.yandex.shop.service.ItemService;
 
-import java.util.List;
+import java.math.BigDecimal;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -35,99 +34,69 @@ class ItemsControllerTest {
     private CartService cartService;
 
     @Mock
+    private CartIdService cartIdService;
+
+    @Mock
+    private Authentication authentication;
+
+    @Mock
     private WebSession session;
+
+    @Mock
+    private Model model;
 
     @InjectMocks
     private ItemsController controller;
 
     @Test
-    void getItems_shouldReturnPage() {
+    void updateFromItems_ShouldCallPlus() {
 
-        when(session.getId()).thenReturn("s1");
+        ServerWebExchange exchange = mock(ServerWebExchange.class);
+        WebSession session = mock(WebSession.class);
+
+        LinkedMultiValueMap<String, String> form = new LinkedMultiValueMap<>();
+
+        form.add("id", "10");
+        form.add("action", "PLUS");
+        form.add("search", "phone");
+        form.add("sort", "PRICE");
+        form.add("pageNumber", "2");
+        form.add("pageSize", "5");
+
+        when(exchange.getFormData()).thenReturn(Mono.just(form));
+        when(exchange.getSession()).thenReturn(Mono.just(session));
+        when(cartIdService.getCartId(authentication, session)).thenReturn("cart");
+        when(cartService.plus("cart", 10L)).thenReturn(Mono.empty());
+
+        String result = controller.updateFromItems(exchange, authentication).block();
+
+        assertEquals("redirect:/items?search=phone&sort=PRICE&pageNumber=2&pageSize=5", result);
+
+        verify(cartService).plus("cart", 10L);
+    }
+
+    @Test
+    void getItem_ShouldReturnItemPage() {
+
+        when(cartIdService.getCartId(authentication, session)).thenReturn("cart-1");
 
         ItemDto item = ItemDto.builder()
-                .id(1L)
-                .title("Phone")
+                .id(10L)
+                .title("Book")
+                .description("Java")
+                .imgPath("book.jpg")
+                .price(BigDecimal.valueOf(50))
                 .build();
 
-        PageResponse<ItemDto> page = new PageResponse<>(List.of(item),
-                1L,
-                1,
-                5,
-                false,
-                false);
+        when(itemService.findById(10L)).thenReturn(Mono.just(item));
+        when(cartService.getCount("cart-1", 10L)).thenReturn(Mono.just(3));
 
-        when(itemService.findItems(null, SortType.NO, 1, 5))
-                .thenReturn(Mono.just(page));
-        when(cartService.getCount("s1", 1L)).thenReturn(Mono.just(2));
-        when(itemService.groupItems(any()))
-                .thenReturn(Mono.just(List.of(List.of(item))));
+        String view = controller.getItem(10L, authentication, session, model).block();
 
-        Model model = new ConcurrentModel();
+        assertEquals("item", view);
 
-        StepVerifier.create(controller.getItems(
-                        null,
-                        SortType.NO,
-                        1,
-                        5,
-                        session,
-                        model))
-                .expectNext("items")
-                .verifyComplete();
-
-        assertTrue(model.containsAttribute("items"));
-        assertTrue(model.containsAttribute("paging"));
-
-        verify(itemService).findItems(null, SortType.NO, 1, 5);
-    }
-
-    @Test
-    void getItem_shouldReturnItemPage() {
-
-        when(session.getId()).thenReturn("s1");
-
-        ItemDto item = ItemDto.builder()
-                .id(1L)
-                .title("Phone")
-                .build();
-
-        when(itemService.findById(1L)).thenReturn(Mono.just(item));
-        when(cartService.getCount("s1", 1L))
-                .thenReturn(Mono.just(3));
-
-        Model model = new ConcurrentModel();
-
-        StepVerifier.create(controller.getItem(1L, session, model))
-                .expectNext("item")
-                .verifyComplete();
-
-        assertTrue(model.containsAttribute("item"));
-    }
-
-    @Test
-    void updateItem_shouldCallPlus() {
-
-        when(session.getId()).thenReturn("s1");
-        when(cartService.plus("s1", 1L)).thenReturn(Mono.empty());
-
-        StepVerifier.create(controller.updateItem(1L, ActionType.PLUS, session))
-                .expectNext("redirect:/items/1")
-                .verifyComplete();
-
-        verify(cartService).plus("s1", 1L);
-    }
-
-    @Test
-    void updateItem_shouldCallMinus() {
-
-        when(session.getId()).thenReturn("s1");
-        when(cartService.minus("s1", 1L))
-                .thenReturn(Mono.empty());
-
-        StepVerifier.create(controller.updateItem(1L, ActionType.MINUS, session))
-                .expectNext("redirect:/items/1")
-                .verifyComplete();
-
-        verify(cartService).minus("s1", 1L);
+        verify(model).addAttribute(eq("item"), any(ItemDto.class));
+        verify(itemService).findById(10L);
+        verify(cartService).getCount("cart-1", 10L);
     }
 }

@@ -5,9 +5,10 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.server.WebSession;
 import reactor.core.publisher.Mono;
-import reactor.test.StepVerifier;
+import ru.yandex.shop.service.CartIdService;
 import ru.yandex.shop.service.OrderService;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -15,42 +16,34 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-class BuyControllerTest {
 
+class BuyControllerTest {
     @Mock
     private OrderService orderService;
 
     @Mock
+    private CartIdService cartIdService;
+
+    @Mock
     private WebSession session;
+
+    @Mock
+    private Authentication authentication;
 
     @InjectMocks
     private BuyController buyController;
 
     @Test
-    void buy_shouldReturnRedirectUrl() {
+    void buy_ShouldRedirectToCreatedOrder() {
 
-        when(session.getId()).thenReturn("session-1");
-        when(orderService.createOrder("session-1"))
-                .thenReturn(Mono.just(123L));
+        when(cartIdService.getCartId(authentication, session)).thenReturn("cart-123");
+        when(orderService.createOrder("cart-123")).thenReturn(Mono.just(42L));
 
-        StepVerifier.create(buyController.buy(session))
-                .assertNext(viewName ->
-                        assertEquals("redirect:/orders/123?newOrder=true", viewName)
-                )
-                .verifyComplete();
+        String result = buyController.buy(session, authentication).block();
 
-        verify(orderService).createOrder("session-1");
-    }
+        assertEquals("redirect:/orders/42?newOrder=true", result);
 
-    @Test
-    void buy_shouldCallOrderServiceWithSessionId() {
-
-        when(session.getId()).thenReturn("abc");
-        when(orderService.createOrder("abc"))
-                .thenReturn(Mono.just(1L));
-
-        buyController.buy(session).block();
-
-        verify(orderService).createOrder("abc");
+        verify(cartIdService).getCartId(authentication, session);
+        verify(orderService).createOrder("cart-123");
     }
 }
