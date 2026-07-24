@@ -2,60 +2,112 @@ package ru.yandex.paymentservice.rest;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.reactive.AutoConfigureWebTestClient;
-import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.autoconfigure.web.reactive.WebFluxTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.test.web.reactive.server.SecurityMockServerConfigurers;
 import org.springframework.test.web.reactive.server.WebTestClient;
-import ru.shop.payment.dto.PaymentRequest;
+import ru.shop.payment.dto.BalanceResponse;
+import ru.shop.payment.dto.PaymentResponse;
+import ru.yandex.paymentservice.config.SecurityConfig;
+import ru.yandex.paymentservice.service.PaymentService;
 
-import java.math.BigDecimal;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
 
-
-@AutoConfigureWebTestClient
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@WebFluxTest(PaymentController.class)
+@Import(SecurityConfig.class)
 class PaymentControllerTest {
 
     @Autowired
     private WebTestClient webTestClient;
 
+    @MockBean
+    private PaymentService paymentService;
+
     @Test
-    void shouldReturnBalance() {
+    void shouldAllowBalanceWithReadScope() {
+
+        when(paymentService.getBalanceResponse(any())).thenReturn(new BalanceResponse());
+
+        webTestClient.mutateWith(SecurityMockServerConfigurers.mockJwt()
+                        .authorities(new SimpleGrantedAuthority("SCOPE_payments.read"))
+                        .jwt(jwt -> jwt.claim("azp", "client")))
+                .get()
+                .uri("/balance")
+                .exchange()
+                .expectStatus()
+                .isOk();
+    }
+
+    @Test
+    void shouldReturnForbiddenForBalanceWithoutReadScope() {
+
+        webTestClient.mutateWith(SecurityMockServerConfigurers.mockJwt()
+                        .authorities(new SimpleGrantedAuthority("SCOPE_payments.write"))
+                        .jwt(jwt -> jwt.claim("azp", "client")))
+                .get()
+                .uri("/balance")
+                .exchange()
+                .expectStatus()
+                .isForbidden();
+    }
+
+    @Test
+    void shouldReturnUnauthorizedWithoutJwt() {
+
         webTestClient.get()
-                .uri("/api/payment/balance")
+                .uri("/balance")
                 .exchange()
-                .expectStatus().isOk()
-                .expectBody()
-                .jsonPath("$.balance")
-                .exists();
+                .expectStatus()
+                .isUnauthorized();
     }
 
     @Test
-    void shouldMakePaymentSuccessfully() {
+    void shouldAllowPaymentWithWriteScope() {
 
-        PaymentRequest request = new PaymentRequest();
-        request.setAmount(BigDecimal.valueOf(300));
+        when(paymentService.makePayment(any(), any())).thenReturn(new PaymentResponse());
 
-        webTestClient.post()
-                .uri("/api/payment")
+        String body = """
+                {
+                  "recipientId":"123",
+                  "amount":100
+                }
+                """;
+
+        webTestClient.mutateWith(SecurityMockServerConfigurers.mockJwt()
+                        .authorities(new SimpleGrantedAuthority("SCOPE_payments.write"))
+                        .jwt(jwt -> jwt.claim("azp", "client")))
+                .post()
+                .uri("/payment")
                 .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue(request)
+                .bodyValue(body)
                 .exchange()
-                .expectStatus().isOk()
-                .expectBody()
-                .jsonPath("$.success").isEqualTo(true)
-                .jsonPath("$.message").isEqualTo("Payment request succeeded");
+                .expectStatus()
+                .isOk();
     }
 
     @Test
-    void shouldFailPaymentWhenNotEnoughBalance() {
+    void shouldReturnForbiddenForPaymentWithReadScope() {
 
-        PaymentRequest request = new PaymentRequest();
-        request.setAmount(BigDecimal.valueOf(999999999));
+        String body = """
+                {
+                  "recipientId":"123",
+                  "amount":100
+                }
+                """;
 
-        webTestClient.post()
-                .uri("/api/payment")
+        webTestClient.mutateWith(SecurityMockServerConfigurers.mockJwt()
+                        .authorities(new SimpleGrantedAuthority("SCOPE_payments.read"))
+                        .jwt(jwt -> jwt.claim("azp", "client")))
+                .post()
+                .uri("/payment")
                 .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue(request)
-                .exchange();
+                .bodyValue(body)
+                .exchange()
+                .expectStatus()
+                .isForbidden();
     }
 }
